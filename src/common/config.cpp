@@ -48,6 +48,7 @@ ConfigMgr::ConfigMgr(std::string config_file_path, std::string config_file_name)
     cfg_file.open(full_path.string());
     if (!cfg_file.is_open()) {
         std::cout << "Can not open config file: " << full_path << std::endl;
+        throw std::runtime_error("Can not open config file");
     } else {
         char line[1024];
         while (!cfg_file.eof()) {
@@ -61,6 +62,8 @@ ConfigMgr::ConfigMgr(std::string config_file_path, std::string config_file_name)
             if (pos == std::string::npos) continue;
             std::string item_name = line_.substr(0, pos);
             std::string item_value = line_.substr(pos+1);
+            boost::trim(item_name);
+            boost::trim(item_value);
 
             auto config_item = std::make_shared<ConfigItem>(this, item_value);
             config_items[item_name] = config_item;
