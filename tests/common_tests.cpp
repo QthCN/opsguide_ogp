@@ -27,7 +27,7 @@ void generate_test_config_file() {
 
 TEST(ConfigMgr, GetItem) {
     generate_test_config_file();
-    ConfigMgr config_mgr("./", "controller.cfg");
+    ConfigMgr config_mgr("./", config_file_name);
     EXPECT_EQ(100, config_mgr.get_item("item_int")->get_int());
     EXPECT_EQ("http://test.com", config_mgr.get_item("item_str")->get_str());
     EXPECT_EQ(true, config_mgr.get_item("item_true")->get_bool());
