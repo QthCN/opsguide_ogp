@@ -12,6 +12,8 @@
 
 class ConfigMgr;
 
+extern ConfigMgr config_mgr;
+
 class ConfigItem {
 public:
     ConfigItem(ConfigMgr *config_mgr, std::string &value);
@@ -26,8 +28,12 @@ private:
 
 class ConfigMgr {
 public:
-    ConfigMgr(std::string config_file_path="./etc", std::string config_file_name="controller.cfg");
+    ConfigMgr() = default;
+    ConfigMgr(std::string config_file_path, std::string config_file_name);
     std::shared_ptr<ConfigItem> &get_item(std::string name);
+    void init();
+    void set_config_file_path(std::string config_file_path);
+    void set_config_file_name(std::string config_file_name);
 
 private:
     std::string config_file_path;

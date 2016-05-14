@@ -40,6 +40,11 @@ bool ConfigItem::get_bool() {
 
 ConfigMgr::ConfigMgr(std::string config_file_path, std::string config_file_name):
         config_file_path(config_file_path), config_file_name(config_file_name) {
+    init();
+}
+
+void ConfigMgr::init() {
+    config_items.clear();
     auto dir = boost::filesystem::path(config_file_path);
     auto file = boost::filesystem::path(config_file_name);
     auto full_path = dir / file;
@@ -71,6 +76,16 @@ ConfigMgr::ConfigMgr(std::string config_file_path, std::string config_file_name)
     }
 }
 
+void ConfigMgr::set_config_file_path(std::string config_file_path) {
+    config_file_path = config_file_path;
+}
+
+void ConfigMgr::set_config_file_name(std::string config_file_name) {
+    config_file_name = config_file_name;
+}
+
 std::shared_ptr<ConfigItem> &ConfigMgr::get_item(std::string name) {
     return config_items[name];
 }
+
+ConfigMgr config_mgr;
