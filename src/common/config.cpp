@@ -76,12 +76,12 @@ void ConfigMgr::init() {
     }
 }
 
-void ConfigMgr::set_config_file_path(std::string config_file_path) {
-    config_file_path = config_file_path;
+void ConfigMgr::set_config_file_path(std::string config_file_path_) {
+    config_file_path = config_file_path_;
 }
 
-void ConfigMgr::set_config_file_name(std::string config_file_name) {
-    config_file_name = config_file_name;
+void ConfigMgr::set_config_file_name(std::string config_file_name_) {
+    config_file_name = config_file_name_;
 }
 
 std::shared_ptr<ConfigItem> &ConfigMgr::get_item(std::string name) {

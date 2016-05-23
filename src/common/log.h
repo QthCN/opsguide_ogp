@@ -39,36 +39,36 @@ private:
 
 
 #define LOG_DEBUG(message) logger(\
-                                               static_cast<std::ostringstream&>( \
-                                               std::ostringstream().flush() << message \
-                                               ).str(),\
-                                               __FUNCTION__,\
-                                               __FILE__,\
-                                               __LINE__, \
-                                               Level::Debug);
+                                   static_cast<std::ostringstream&>( \
+                                   std::ostringstream().flush() << message \
+                                   ).str(),\
+                                   __FUNCTION__,\
+                                   __FILE__,\
+                                   __LINE__, \
+                                   Level::Debug);
 #define LOG_INFO(message) logger(\
-                                               static_cast<std::ostringstream&>( \
-                                               std::ostringstream().flush() << message \
-                                               ).str(),\
-                                               __FUNCTION__,\
-                                               __FILE__,\
-                                               __LINE__, \
-                                               Level::Info);
+                                   static_cast<std::ostringstream&>( \
+                                   std::ostringstream().flush() << message \
+                                   ).str(),\
+                                   __FUNCTION__,\
+                                   __FILE__,\
+                                   __LINE__, \
+                                   Level::Info);
 #define LOG_WARN(message) logger(\
-                                               static_cast<std::ostringstream&>( \
-                                               std::ostringstream().flush() << message \
-                                               ).str(),\
-                                               __FUNCTION__,\
-                                               __FILE__,\
-                                               __LINE__, \
-                                               Level::Warn);
+                                   static_cast<std::ostringstream&>( \
+                                   std::ostringstream().flush() << message \
+                                   ).str(),\
+                                   __FUNCTION__,\
+                                   __FILE__,\
+                                   __LINE__, \
+                                   Level::Warn);
 #define LOG_ERROR(message) logger(\
-                                               static_cast<std::ostringstream&>( \
-                                               std::ostringstream().flush() << message \
-                                               ).str(),\
-                                               __FUNCTION__,\
-                                               __FILE__,\
-                                               __LINE__, \
-                                               Level::Error);
+                                   static_cast<std::ostringstream&>( \
+                                   std::ostringstream().flush() << message \
+                                   ).str(),\
+                                   __FUNCTION__,\
+                                   __FILE__,\
+                                   __LINE__, \
+                                   Level::Error);
 
 #endif //OGP_LOG_H
