@@ -2,8 +2,8 @@
 // Created by thuanqin on 16/5/14.
 //
 
-#ifndef OGP_LOG_H
-#define OGP_LOG_H
+#ifndef OGP_COMMON_LOG_H
+#define OGP_COMMON_LOG_H
 
 #include <string>
 #include <iostream>
@@ -71,4 +71,4 @@ private:
                                    __LINE__, \
                                    Level::Error);
 
-#endif //OGP_LOG_H
+#endif //OGP_COMMON_LOG_H

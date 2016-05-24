@@ -2,8 +2,8 @@
 // Created by thuanqin on 16/5/13.
 //
 
-#ifndef OG_CONTROLLER_CONFIG_H
-#define OG_CONTROLLER_CONFIG_H
+#ifndef OG_COMMON_CONFIG_H
+#define OG_COMMON_CONFIG_H
 
 #include <map>
 #include <memory>
@@ -41,4 +41,4 @@ private:
     std::map<std::string, std::shared_ptr<ConfigItem>> config_items;
 };
 
-#endif //OG_CONTROLLER_CONFIG_H
+#endif //OG_COMMON_CONFIG_H

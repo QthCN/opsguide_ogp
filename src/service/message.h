@@ -2,8 +2,8 @@
 // Created by thuanqin on 16/5/20.
 //
 
-#ifndef OGP_MESSAGE_H
-#define OGP_MESSAGE_H
+#ifndef OGP_SERVICE_MESSAGE_H
+#define OGP_SERVICE_MESSAGE_H
 
 #include "common/log.h"
 
@@ -38,4 +38,4 @@ typedef std::shared_ptr<Message> msg_ptr;
 const size_t msg_length_hdr_size = 4;
 const size_t msg_type_hdr_size = 2;
 
-#endif //OGP_MESSAGE_H
+#endif //OGP_SERVICE_MESSAGE_H

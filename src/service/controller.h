@@ -2,8 +2,8 @@
 // Created by thuanqin on 16/5/19.
 //
 
-#ifndef OGP_CONTROLLER_H
-#define OGP_CONTROLLER_H
+#ifndef OGP_SERVICE_CONTROLLER_H
+#define OGP_SERVICE_CONTROLLER_H
 
 #include <queue>
 #include <string>
@@ -127,4 +127,4 @@ private:
     std::vector<agent_sess_ptr> agent_sessions;
 };
 
-#endif //OGP_CONTROLLER_H
+#endif //OGP_SERVICE_CONTROLLER_H

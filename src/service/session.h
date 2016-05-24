@@ -2,8 +2,8 @@
 // Created by thuanqin on 16/5/19.
 //
 
-#ifndef OGP_SESSION_H
-#define OGP_SESSION_H
+#ifndef OGP_SERVICE_SESSION_H
+#define OGP_SERVICE_SESSION_H
 
 #include "service/message.h"
 
@@ -26,4 +26,4 @@ public:
 
 typedef std::shared_ptr<Session> sess_ptr;
 
-#endif //OGP_SESSION_H
+#endif //OGP_SERVICE_SESSION_H
