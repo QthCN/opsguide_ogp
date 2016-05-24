@@ -1,9 +1,10 @@
 //
-// Created by thuanqin on 16/5/19.
+// Created by thuanqin on 16/5/24.
 //
 
-#ifndef OGP_SERVICE_CONTROLLER_H
-#define OGP_SERVICE_CONTROLLER_H
+#ifndef OGP_SERVICE_AGENT_H
+#define OGP_SERVICE_AGENT_H
+
 
 #include <queue>
 #include <string>
@@ -16,16 +17,16 @@
 #include "service/message.h"
 #include "service/session.h"
 
-class ControllerService;
+class AgentService;
 
-class AgentSession: public Session, public std::enable_shared_from_this<AgentSession> {
+class ControllerSession: public Session, public std::enable_shared_from_this<ControllerSession> {
 public:
-    friend class ControllerService;
-    AgentSession(boost::asio::io_service &io_service,
-                 ControllerService *controller_service,
+    friend class AgentService;
+    ControllerSession(boost::asio::io_service &io_service,
+                      AgentService *agent_service,
                  BaseController *controller):
             agent_socket(io_service),
-            controller_service(controller_service),
+            agent_service(agent_service),
             controller(controller),
             sending(false),
             read_deadline_timer(io_service),
@@ -33,15 +34,15 @@ public:
             strand(io_service),
             cmsg_length(0){}
     boost::asio::ip::tcp::socket& get_socket() {return agent_socket;};
-    AgentSession &set_address(std::string address_) {address = address_; return *this;}
+    ControllerSession &set_address(std::string address_) {address = address_; return *this;}
     std::string get_address() const {return address;}
-    AgentSession &set_port(unsigned short port_) {port = port_; return *this;}
+    ControllerSession &set_port(unsigned short port_) {port = port_; return *this;}
     unsigned short get_port() const {return port;}
     void send_msg(msg_ptr msg);
     unsigned int get_read_timeout() const {return read_timeout;}
     unsigned int get_write_timeout() const {return write_timeout;}
-    AgentSession &set_read_timeout(unsigned int read_timeout_) {read_timeout = read_timeout_; return *this;}
-    AgentSession &set_write_timeout(unsigned int write_timeout_) {write_timeout = write_timeout_; return *this;}
+    ControllerSession &set_read_timeout(unsigned int read_timeout_) {read_timeout = read_timeout_; return *this;}
+    ControllerSession &set_write_timeout(unsigned int write_timeout_) {write_timeout = write_timeout_; return *this;}
     boost::asio::deadline_timer &get_read_deadline_timer() {return read_deadline_timer;}
     boost::asio::deadline_timer &get_write_deadline_timer() {return write_deadline_timer;}
     boost::asio::strand &get_strand() {return strand;}
@@ -67,9 +68,9 @@ private:
     boost::asio::ip::tcp::socket agent_socket;
     std::string address;
     unsigned short port;
-    ControllerService *controller_service;
+    AgentService *agent_service;
     BaseController *controller;
-    // 等待发送给agent的消息队列
+    // 等待发送给controller的消息队列
     std::queue<msg_ptr> messages;
     // 是否在发送消息中
     bool sending;
@@ -91,35 +92,34 @@ private:
     unsigned int cmsg_length;
 };
 
-class ControllerService {
+class AgentService {
 public:
-    typedef std::shared_ptr<AgentSession> agent_sess_ptr;
+    typedef std::shared_ptr<ControllerSession> controller_sess_ptr;
 
-    ControllerService(unsigned int thread_num, const std::string &listen_address,
-                      unsigned int listen_port, BaseController *controller);
+    AgentService(unsigned int thread_num, const std::string &controller_address,
+                      unsigned int controller_port, BaseController *controller);
     void run();
-    void begin_write(agent_sess_ptr agent_sess);
+    void begin_write(controller_sess_ptr controller_sess);
 
 private:
-    void start_accept();
-    void start_read(agent_sess_ptr agent_sess);
-    void start_write(agent_sess_ptr agent_sess);
-    void handle_accept(agent_sess_ptr agent_sess, const boost::system::error_code& error);
-    void handle_read_timeout(agent_sess_ptr agent_sess, boost::system::error_code const &error);
-    void handle_write_timeout(agent_sess_ptr agent_sess, boost::system::error_code const &error);
-    void handle_read(agent_sess_ptr agent_sess, boost::system::error_code const &error, size_t bytes_transferred);
-    void handle_write(agent_sess_ptr agent_sess, boost::system::error_code const &error, size_t bytes_transferred);
-    size_t read_completion_handler(agent_sess_ptr agent_sess,
+    void start_connect();
+    void start_read(controller_sess_ptr controller_sess);
+    void start_write(controller_sess_ptr controller_sess);
+    void handle_read_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
+    void handle_write_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
+    void handle_connect(controller_sess_ptr controller_sess, boost::system::error_code);
+    void handle_read(controller_sess_ptr controller_sess, boost::system::error_code const &error, size_t bytes_transferred);
+    void handle_write(controller_sess_ptr controller_sess, boost::system::error_code const &error, size_t bytes_transferred);
+    size_t read_completion_handler(controller_sess_ptr controller_sess,
                                    boost::system::error_code const &error,
                                    size_t bytes_transferred);
 
     BaseController *controller;
     unsigned int thread_num;
-    std::string listen_address;
-    unsigned int listen_port;
-    std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor;
+    std::string controller_address;
+    unsigned int controller_port;
     boost::asio::io_service io_service;
-    std::vector<agent_sess_ptr> agent_sessions;
+    std::vector<controller_sess_ptr> controller_sessions;
 };
 
-#endif //OGP_SERVICE_CONTROLLER_H
+#endif //OGP_SERVICE_AGENT_H

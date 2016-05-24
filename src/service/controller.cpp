@@ -38,10 +38,12 @@ void AgentSession::send_msg(msg_ptr msg) {
 }
 
 ControllerService::ControllerService(unsigned int thread_num, const std::string &listen_address,
-                                     unsigned int listen_port):thread_num(thread_num),
-                                                               listen_address(listen_address),
-                                                               listen_port(listen_port) {
-    controller.init();
+                                     unsigned int listen_port,
+                                     BaseController *controller):thread_num(thread_num),
+                                                                 listen_address(listen_address),
+                                                                 listen_port(listen_port),
+                                                                 controller(controller) {
+    controller->init();
 
     if (listen_address == "0.0.0.0") {
         auto endpoint = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), listen_port);
@@ -68,7 +70,7 @@ void ControllerService::run() {
 }
 
 void ControllerService::start_accept() {
-    agent_sess_ptr agent_sess = std::make_shared<AgentSession>(io_service, this, &controller);
+    agent_sess_ptr agent_sess = std::make_shared<AgentSession>(io_service, this, controller);
     agent_sess->set_read_timeout(static_cast<unsigned int>(config_mgr.get_item("controller_read_timeout")->get_int()));
     agent_sess->set_write_timeout(static_cast<unsigned int>(config_mgr.get_item("controller_write_timeout")->get_int()));
     agent_sessions.push_back(agent_sess);
@@ -135,7 +137,7 @@ void ControllerService::handle_accept(agent_sess_ptr agent_sess, const boost::sy
         LOG_INFO("Receive connection from agent: " << agent_remote_address << ":" << agent_remote_port);
 
         try {
-            controller.associate_sess(agent_sess);
+            controller->associate_sess(agent_sess);
             start_read(agent_sess);
         } catch (...) {
             LOG_ERROR("Accept session Exception!!!")
@@ -242,7 +244,7 @@ void ControllerService::handle_read(agent_sess_ptr agent_sess, boost::system::er
                 auto msg = std::make_shared<Message>(static_cast<MsgType>(msg_type), msg_body,
                                                      agent_sess->get_cmsg_length()-msg_type_hdr_size);
                 try {
-                    controller.handle_msg(agent_sess, msg);
+                    controller->handle_msg(agent_sess, msg);
                 } catch (...) {
                     // controller处理消息异常
                 }
@@ -291,13 +293,13 @@ void ControllerService::start_write(agent_sess_ptr agent_sess) {
     }
 
     auto msg_size = get_4_u8_from_u32(static_cast<uint32_t>(msg_type_hdr_size + msg->get_msg_body_size()));
-    auto msg_type_size = get_2_u8_from_u32(static_cast<uint32_t>(msg_type_hdr_size));
+    auto msg_type = get_2_u8_from_u32(static_cast<uint32_t>(msg->get_msg_type()));
     std::ostream os(&(agent_sess->get_write_buf()));
     os.write(msg_size, msg_length_hdr_size);
-    os.write(msg_type_size, msg_type_hdr_size);
+    os.write(msg_type, msg_type_hdr_size);
     os.write(msg->get_msg_body(), msg->get_msg_body_size());
     delete[] msg_size;
-    delete[] msg_type_size;
+    delete[] msg_type;
 
     // 设置新的超时器
     agent_sess->get_write_deadline_timer().expires_from_now(

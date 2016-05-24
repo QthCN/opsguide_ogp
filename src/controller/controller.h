@@ -5,15 +5,17 @@
 #ifndef OG_CONTROLLER_CONTROLLER_H
 #define OG_CONTROLLER_CONTROLLER_H
 
+#include "controller/base.h"
 #include "service/message.h"
 #include "service/session.h"
 
-class Controller {
+class Controller: public BaseController {
 public:
     Controller() = default;
     void init();
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
+    void send_heartbeat() {};
 
 private:
 

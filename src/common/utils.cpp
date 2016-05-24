@@ -11,7 +11,7 @@ uint32_t get_u32_from_4_u8(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
 
 uint32_t get_u32_from_2_u8(uint8_t a, uint8_t b) {
     uint32_t v = 0;
-    v = (v | a << 24 | b << 16);
+    v = (v | a << 8 | b);
     return v;
 }
 
