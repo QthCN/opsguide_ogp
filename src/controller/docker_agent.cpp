@@ -34,6 +34,7 @@ void DockerAgent::invalid_sess(sess_ptr sess) {
 void DockerAgent::send_heartbeat() {
     auto period = static_cast<unsigned int>(config_mgr.get_item("agent_heartbeat_period")->get_int());
     while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(period));
         agent_lock.lock();
         if (controller_sess != nullptr) {
             controller_sess->send_msg(
@@ -47,7 +48,6 @@ void DockerAgent::send_heartbeat() {
             LOG_WARN("controller_sess is nullptr, no heartbeat msg send.")
         }
         agent_lock.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(period));
     }
 }
 
