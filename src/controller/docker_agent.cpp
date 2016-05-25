@@ -15,10 +15,13 @@ void DockerAgent::init() {
 }
 
 void DockerAgent::associate_sess(sess_ptr sess) {
+    agent_lock.lock();
     if (controller_sess) {
+        agent_lock.unlock();
         throw std::runtime_error("controller_sess is not nullptr");
     } else {
         controller_sess = sess;
+        agent_lock.unlock();
     }
 }
 
