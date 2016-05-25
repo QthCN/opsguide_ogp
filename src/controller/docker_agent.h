@@ -19,6 +19,8 @@ public:
     void invalid_sess(sess_ptr sess);
 
 private:
+    sess_ptr controller_sess = nullptr;
+    std::mutex agent_lock;
 
 };
 

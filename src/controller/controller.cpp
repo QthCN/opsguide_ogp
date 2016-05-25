@@ -22,13 +22,18 @@ void Controller::invalid_sess(sess_ptr sess) {
 }
 
 void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
-    LOG_INFO("" << static_cast<unsigned int>(msg->get_msg_type()))
-    LOG_INFO("" << msg->get_msg_body_size())
-    sess->send_msg(
-            std::make_shared<Message>(
-                    MsgType::DOCKER_HEARTBEAT,
-                    new char[1],
-                    1
-            )
-    );
+    switch(msg->get_msg_type()) {
+        // docker agent发来的心跳请求
+        case MsgType::DA_DOCKER_HEARTBEAT_REQ:
+            sess->send_msg(
+                    std::make_shared<Message>(
+                            MsgType::CT_DOCKER_HEARTBEAT_RES,
+                            new char[0],
+                            0
+                    )
+            );
+            break;
+        default:
+            LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
+    }
 }

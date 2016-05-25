@@ -8,8 +8,11 @@
 #include "common/log.h"
 
 enum class MsgType: unsigned int {
+    // controller
+    CT_DOCKER_HEARTBEAT_RES = 0,
+
     // docker agent
-    DOCKER_HEARTBEAT = 0,
+    DA_DOCKER_HEARTBEAT_REQ = 3000,
 
 };
 

@@ -19,6 +19,7 @@ void ControllerSession::send_msg(msg_ptr msg) {
      * 发送消息。该方法会将消息放到发送队列中,然后判断目前是否正在发送消息,如果是则直接返回,否则开始发送。
      * 发送开始后,每发送完一个消息都会去检查发送队列是否是空的,如果是则结束发送,否则继续发送并重复此过程。
      * */
+    if (!valid()) return;
     auto take_care_of_send = false;
     msg_lock.lock();
     messages.push(msg);
@@ -323,6 +324,7 @@ void AgentService::begin_write(controller_sess_ptr controller_sess) {
 }
 
 void AgentService::start_write(controller_sess_ptr controller_sess) {
+    if (!controller_sess->valid()) return;
     msg_ptr msg = nullptr;
     controller_sess->get_msg_lock().lock();
     if (controller_sess->get_messages().empty()) {
