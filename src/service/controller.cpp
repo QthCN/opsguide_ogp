@@ -219,7 +219,7 @@ void ControllerService::handle_read(agent_sess_ptr agent_sess, boost::system::er
         while (enough_data) {
             /*
              * 报文格式为: 4字节余下部分总长度 + 2字节msg类型 + protobuf报文
-             * 例如收到一个10字节的报文,则开始的4个字节为0x00000006,接着是2字节的类型,如0x0001,在接着是6字节的profobuf内容
+             * 例如收到一个10字节的报文,则开始的4个字节为0x00000006,接着是2字节的类型,如0x0001,在接着是4字节的profobuf内容
              * */
 
             // 获取长度信息
