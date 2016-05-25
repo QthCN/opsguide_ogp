@@ -29,6 +29,7 @@ public:
             agent_service(agent_service),
             controller(controller),
             sending(false),
+            stopped(false),
             read_deadline_timer(io_service),
             write_deadline_timer(io_service),
             strand(io_service),
@@ -57,12 +58,13 @@ public:
         stopped = true;
         boost::system::error_code ignored_ec;
         agent_socket.close(ignored_ec);
-        read_deadline_timer.cancel();
-        write_deadline_timer.cancel();
+        read_deadline_timer.cancel(ignored_ec);
+        write_deadline_timer.cancel(ignored_ec);
         while (!messages.empty()) {messages.pop();}
     }
     unsigned int get_cmsg_length() {return cmsg_length;}
     void set_cmsg_length(unsigned int cmsg_length_) {cmsg_length = cmsg_length_;}
+    void invalid_sess();
 
 private:
     boost::asio::ip::tcp::socket agent_socket;
@@ -102,7 +104,9 @@ public:
     void begin_write(controller_sess_ptr controller_sess);
 
 private:
+    void invalid_and_remove_sess(controller_sess_ptr controller_sess);
     void start_connect();
+    void reconnect();
     void start_read(controller_sess_ptr controller_sess);
     void start_write(controller_sess_ptr controller_sess);
     void handle_read_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
@@ -120,6 +124,7 @@ private:
     unsigned int controller_port;
     boost::asio::io_service io_service;
     std::vector<controller_sess_ptr> controller_sessions;
+    std::mutex sess_lock;
 };
 
 #endif //OGP_SERVICE_AGENT_H

@@ -37,8 +37,6 @@ set(DOCKER_AGENT_SOURCE_FILES
         src/common/config.cpp
         src/common/log.h
         src/common/log.cpp
-        src/service/controller.h
-        src/service/controller.cpp
         src/service/session.h
         src/service/message.h
         src/controller/docker_agent.h

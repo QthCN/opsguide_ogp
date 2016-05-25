@@ -62,6 +62,7 @@ public:
     }
     unsigned int get_cmsg_length() {return cmsg_length;}
     void set_cmsg_length(unsigned int cmsg_length_) {cmsg_length = cmsg_length_;}
+    void invalid_sess();
 
 private:
     boost::asio::ip::tcp::socket agent_socket;
@@ -101,6 +102,7 @@ public:
     void begin_write(agent_sess_ptr agent_sess);
 
 private:
+    void invalid_and_remove_sess(agent_sess_ptr agent_sess);
     void start_accept();
     void start_read(agent_sess_ptr agent_sess);
     void start_write(agent_sess_ptr agent_sess);
@@ -120,6 +122,7 @@ private:
     std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor;
     boost::asio::io_service io_service;
     std::vector<agent_sess_ptr> agent_sessions;
+    std::mutex sess_lock;
 };
 
 #endif //OGP_SERVICE_CONTROLLER_H

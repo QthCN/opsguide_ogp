@@ -37,6 +37,11 @@ void ControllerSession::send_msg(msg_ptr msg) {
     agent_service->begin_write(shared_from_this());
 }
 
+void ControllerSession::invalid_sess() {
+    if (!valid()) return;
+    stop();
+}
+
 AgentService::AgentService(unsigned int thread_num, const std::string &controller_address,
                                      unsigned int controller_port,
                                      BaseController *controller):thread_num(thread_num),
@@ -46,6 +51,25 @@ AgentService::AgentService(unsigned int thread_num, const std::string &controlle
     controller->init();
 
     start_connect();
+}
+
+void AgentService::invalid_and_remove_sess(controller_sess_ptr controller_sess) {
+    sess_lock.lock();
+    if (controller_sess->valid()) {
+        // 通知controller移除此session相关的信息
+        controller->invalid_sess(controller_sess);
+        // 通知session清理相关资源
+        controller_sess->invalid_sess();
+        // 删除对session的引用
+        for (auto k=controller_sessions.begin(); k!=controller_sessions.end(); k++) {
+            if ((*k)->get_address() == controller_sess->get_address()
+                && (*k)->get_port() == controller_sess->get_port()) {
+                controller_sessions.erase(k);
+                break;
+            }
+        }
+    }
+    sess_lock.unlock();
 }
 
 void AgentService::handle_connect(controller_sess_ptr controller_sess, boost::system::error_code error) {
@@ -58,14 +82,27 @@ void AgentService::handle_connect(controller_sess_ptr controller_sess, boost::sy
 
         try {
             controller->associate_sess(controller_sess);
-            start_read(controller_sess);
         } catch (...) {
-            LOG_ERROR("Connect to controller Exception!!!")
+            LOG_ERROR("Session association Exception!!!")
+            invalid_and_remove_sess(controller_sess);
+            reconnect();
         }
-
+        start_read(controller_sess);
     } else {
         LOG_ERROR("Connect to controller error: " << error)
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     }
+}
+
+void AgentService::reconnect() {
+    sess_lock.lock();
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    LOG_INFO("Reconnect to controller now.")
+    if (controller_sessions.size() == 0) {
+        start_connect();
+    }
+    sess_lock.unlock();
 }
 
 void AgentService::start_connect() {
@@ -112,9 +149,14 @@ size_t AgentService::read_completion_handler(controller_sess_ptr controller_sess
         return 1024;
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
+        LOG_ERROR("read_completion_handler error: " << error)
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
         return 0;
     } else {
         LOG_ERROR("read_completion_handler error: " << error)
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
         return 0;
     }
 }
@@ -154,14 +196,16 @@ void AgentService::handle_read_timeout(controller_sess_ptr controller_sess, boos
         } else {
             LOG_WARN("Agent read time out")
             // 针对读取超时进行相关操作
-            // 如果必要要对socket进行关闭操作,否则socket会一直在poll中read
+            invalid_and_remove_sess(controller_sess);
+            reconnect();
         }
     } else if (error == boost::asio::error::operation_aborted) {
         // 定时器被重置超时时间
         ;
     } else {
         LOG_ERROR("Read time out error: " << error)
-        // 如果必要要对socket进行关闭操作,否则socket会一直在poll中read
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     }
 
 }
@@ -174,7 +218,8 @@ void AgentService::handle_write_timeout(controller_sess_ptr controller_sess, boo
         } else {
             LOG_WARN("Agent write time out")
             // 针对写入超时进行相关操作
-            // 如果必要要对socket进行关闭操作,否则socket会一直在poll中write
+            invalid_and_remove_sess(controller_sess);
+            reconnect();
         }
     } else if (error == boost::asio::error::operation_aborted) {
         // 定时器被重置超时时间
@@ -182,6 +227,8 @@ void AgentService::handle_write_timeout(controller_sess_ptr controller_sess, boo
     } else {
         LOG_ERROR("Write time out error: " << error)
         // 如果必要要对socket进行关闭操作,否则socket会一直在poll中write
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     }
 
 }
@@ -198,9 +245,12 @@ void AgentService::handle_write(controller_sess_ptr controller_sess, boost::syst
         start_write(controller_sess);
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
-
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     } else {
         LOG_ERROR("Write data error: " << error)
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     }
 }
 
@@ -259,9 +309,12 @@ void AgentService::handle_read(controller_sess_ptr controller_sess, boost::syste
         start_read(controller_sess);
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
-
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     } else {
         LOG_ERROR("Read data error: " << error)
+        invalid_and_remove_sess(controller_sess);
+        reconnect();
     }
 }
 

@@ -22,6 +22,8 @@ public:
     virtual void send_msg(msg_ptr msg) = 0;
     // Session是否有效
     virtual bool valid() const = 0;
+    // 使Session无效
+    virtual void invalid_sess() = 0;
 };
 
 typedef std::shared_ptr<Session> sess_ptr;

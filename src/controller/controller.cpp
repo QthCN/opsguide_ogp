@@ -13,6 +13,14 @@ void Controller::associate_sess(sess_ptr sess) {
 
 }
 
+void Controller::send_heartbeat() {
+
+}
+
+void Controller::invalid_sess(sess_ptr sess) {
+
+}
+
 void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
     LOG_INFO("" << static_cast<unsigned int>(msg->get_msg_type()))
     LOG_INFO("" << msg->get_msg_body_size())

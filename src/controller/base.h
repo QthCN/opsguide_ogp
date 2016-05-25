@@ -11,9 +11,12 @@
 class BaseController {
 public:
     virtual void init() = 0;
+    // 关联session和controller内部数据结构,如果有问题需要抛出异常
     virtual void associate_sess(sess_ptr sess) = 0;
     virtual void handle_msg(sess_ptr sess, msg_ptr msg) = 0;
     virtual void send_heartbeat() = 0;
+    // service无效化一个session的时候会回调此方法,如果此session在controller中已经无效则不用执行任何操作
+    virtual void invalid_sess(sess_ptr sess) = 0;
 };
 
 #endif //OGP_CONTROLLER_BASE_H

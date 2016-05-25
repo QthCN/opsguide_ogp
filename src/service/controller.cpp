@@ -37,6 +37,30 @@ void AgentSession::send_msg(msg_ptr msg) {
     controller_service->begin_write(shared_from_this());
 }
 
+void AgentSession::invalid_sess() {
+    if (!valid()) return;
+    stop();
+}
+
+void ControllerService::invalid_and_remove_sess(agent_sess_ptr agent_sess) {
+    sess_lock.lock();
+    if (agent_sess->valid()) {
+        // 通知controller移除此session相关的信息
+        controller->invalid_sess(agent_sess);
+        // 通知session清理相关资源
+        agent_sess->invalid_sess();
+        // 删除对session的引用
+        for (auto k=agent_sessions.begin(); k!=agent_sessions.end(); k++) {
+            if ((*k)->get_address() == agent_sess->get_address()
+                && (*k)->get_port() == agent_sess->get_port()) {
+                agent_sessions.erase(k);
+                break;
+            }
+        }
+    }
+    sess_lock.unlock();
+}
+
 ControllerService::ControllerService(unsigned int thread_num, const std::string &listen_address,
                                      unsigned int listen_port,
                                      BaseController *controller):thread_num(thread_num),
@@ -94,9 +118,12 @@ size_t ControllerService::read_completion_handler(agent_sess_ptr agent_sess, boo
         return 1024;
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
+        LOG_ERROR("read_completion_handler error: " << error)
+        invalid_and_remove_sess(agent_sess);
         return 0;
     } else {
         LOG_ERROR("read_completion_handler error: " << error)
+        invalid_and_remove_sess(agent_sess);
         return 0;
     }
 }
@@ -138,13 +165,14 @@ void ControllerService::handle_accept(agent_sess_ptr agent_sess, const boost::sy
 
         try {
             controller->associate_sess(agent_sess);
-            start_read(agent_sess);
         } catch (...) {
-            LOG_ERROR("Accept session Exception!!!")
+            LOG_ERROR("Associate session Exception!!!")
+            invalid_and_remove_sess(agent_sess);
         }
-
+        start_read(agent_sess);
     } else {
         LOG_ERROR("Accept session error: " << error)
+        invalid_and_remove_sess(agent_sess);
     }
     start_accept();
 }
@@ -157,14 +185,14 @@ void ControllerService::handle_read_timeout(agent_sess_ptr agent_sess, boost::sy
         } else {
             LOG_WARN("Agent read time out")
             // 针对读取超时进行相关操作
-            // 如果必要要对socket进行关闭操作,否则socket会一直在poll中read
+            invalid_and_remove_sess(agent_sess);
         }
     } else if (error == boost::asio::error::operation_aborted) {
         // 定时器被重置超时时间
         ;
     } else {
         LOG_ERROR("Read time out error: " << error)
-        // 如果必要要对socket进行关闭操作,否则socket会一直在poll中read
+        invalid_and_remove_sess(agent_sess);
     }
 
 }
@@ -177,14 +205,14 @@ void ControllerService::handle_write_timeout(agent_sess_ptr agent_sess, boost::s
         } else {
             LOG_WARN("Agent write time out")
             // 针对写入超时进行相关操作
-            // 如果必要要对socket进行关闭操作,否则socket会一直在poll中write
+            invalid_and_remove_sess(agent_sess);
         }
     } else if (error == boost::asio::error::operation_aborted) {
         // 定时器被重置超时时间
         ;
     } else {
         LOG_ERROR("Write time out error: " << error)
-        // 如果必要要对socket进行关闭操作,否则socket会一直在poll中write
+        invalid_and_remove_sess(agent_sess);
     }
 
 }
@@ -201,9 +229,10 @@ void ControllerService::handle_write(agent_sess_ptr agent_sess, boost::system::e
         start_write(agent_sess);
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
-
+        invalid_and_remove_sess(agent_sess);
     } else {
         LOG_ERROR("Write data error: " << error)
+        invalid_and_remove_sess(agent_sess);
     }
 }
 
@@ -262,9 +291,10 @@ void ControllerService::handle_read(agent_sess_ptr agent_sess, boost::system::er
         start_read(agent_sess);
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
-
+        invalid_and_remove_sess(agent_sess);
     } else {
         LOG_ERROR("Read data error: " << error)
+        invalid_and_remove_sess(agent_sess);
     }
 }
 

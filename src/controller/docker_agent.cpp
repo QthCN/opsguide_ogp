@@ -14,6 +14,10 @@ void DockerAgent::init() {
 void DockerAgent::associate_sess(sess_ptr sess) {
 }
 
+void DockerAgent::invalid_sess(sess_ptr sess) {
+
+}
+
 void DockerAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
     LOG_INFO("" << static_cast<unsigned int>(msg->get_msg_type()))
     LOG_INFO("" << msg->get_msg_body_size())

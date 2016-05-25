@@ -16,9 +16,9 @@ public:
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
     void send_heartbeat();
+    void invalid_sess(sess_ptr sess);
 
 private:
-    sess_ptr sess;
 
 };
 
