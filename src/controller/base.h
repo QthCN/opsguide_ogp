@@ -18,6 +18,8 @@ public:
     virtual void handle_msg(sess_ptr sess, msg_ptr msg) = 0;
     // 向对端发送心跳包
     virtual void send_heartbeat() = 0;
+    // 获取同步信息
+    virtual void sync() = 0;
     // service无效化一个session的时候会回调此方法,如果此session在controller中已经无效则不用执行任何操作
     virtual void invalid_sess(sess_ptr sess) = 0;
 };

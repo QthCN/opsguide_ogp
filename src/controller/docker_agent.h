@@ -16,6 +16,7 @@ public:
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
     void send_heartbeat();
+    void sync();
     void invalid_sess(sess_ptr sess);
 
 private:

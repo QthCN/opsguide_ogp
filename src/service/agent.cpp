@@ -121,13 +121,18 @@ void AgentService::run() {
     LOG_INFO("AgentService run. Thread num: " << thread_num
              << " Controller Address: " << controller_address << " Port: " << controller_port)
     std::vector<std::thread> cs_threads;
+    // 监听线程
     for (unsigned int i=0; i<thread_num; i++) {
         std::thread t([this](){this->io_service.run();});
         cs_threads.push_back(std::move(t));
     }
-
+    // 心跳线程
     std::thread t([this](){this->controller->send_heartbeat();});
     cs_threads.push_back(std::move(t));
+
+    // 状态同步线程
+    std::thread t2([this](){this->controller->sync();});
+    cs_threads.push_back(std::move(t2));
 
     for (auto t = cs_threads.begin(); t!=cs_threads.end();t++) {
         t->join();

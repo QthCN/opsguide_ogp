@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "common/config.h"
+#include "common/docker_client.h"
 #include "common/log.h"
 
 
@@ -58,5 +59,14 @@ void DockerAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
             break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
+    }
+}
+
+void DockerAgent::sync() {
+    auto period = static_cast<unsigned int>(config_mgr.get_item("agent_sync_period")->get_int());
+    DockerClient docker_client("");
+    while (true) {
+        LOG_WARN("SYNC")
+        std::this_thread::sleep_for(std::chrono::seconds(period));
     }
 }

@@ -14,7 +14,11 @@ void Controller::associate_sess(sess_ptr sess) {
 }
 
 void Controller::send_heartbeat() {
+    // Controller可以不实现该方法
+}
 
+void Controller::sync() {
+    // Controller可以不实现该方法
 }
 
 void Controller::invalid_sess(sess_ptr sess) {
