@@ -13,6 +13,7 @@ enum class MsgType: unsigned int {
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
+    DA_DOCKER_MACHINE_INFO_SYNC_REQ = 3001,
 
 };
 

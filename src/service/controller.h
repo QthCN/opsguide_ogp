@@ -28,6 +28,7 @@ public:
             controller_service(controller_service),
             controller(controller),
             sending(false),
+            stopped(false),
             read_deadline_timer(io_service),
             write_deadline_timer(io_service),
             strand(io_service),
@@ -103,6 +104,8 @@ public:
 
 private:
     void invalid_and_remove_sess(agent_sess_ptr agent_sess);
+    bool sess_exist(agent_sess_ptr agent_sess);
+    bool sess_exist(const std::string &address, unsigned short port);
     void start_accept();
     void start_read(agent_sess_ptr agent_sess);
     void start_write(agent_sess_ptr agent_sess);

@@ -62,6 +62,34 @@ void ControllerService::invalid_and_remove_sess(agent_sess_ptr agent_sess) {
     sess_lock.unlock();
 }
 
+bool ControllerService::sess_exist(agent_sess_ptr agent_sess) {
+    sess_lock.lock();
+    auto ret = false;
+    auto ip_address = agent_sess->get_address();
+    auto port = agent_sess->get_port();
+    for (auto s: agent_sessions) {
+        if (s->get_address()==ip_address && s->get_port()==port) {
+            ret = true;
+            break;
+        }
+    }
+    sess_lock.unlock();
+    return ret;
+}
+
+bool ControllerService::sess_exist(const std::string &address, unsigned short port) {
+    sess_lock.lock();
+    auto ret = false;
+    for (auto s: agent_sessions) {
+        if (s->get_address()==address && s->get_port()==port) {
+            ret = true;
+            break;
+        }
+    }
+    sess_lock.unlock();
+    return ret;
+}
+
 ControllerService::ControllerService(unsigned int thread_num, const std::string &listen_address,
                                      unsigned int listen_port,
                                      BaseController *controller):thread_num(thread_num),
@@ -160,17 +188,22 @@ void ControllerService::handle_accept(agent_sess_ptr agent_sess, const boost::sy
     if (!error) {
         auto agent_remote_address = agent_sess->get_socket().remote_endpoint().address().to_string();
         auto agent_remote_port = agent_sess->get_socket().remote_endpoint().port();
-        agent_sess->set_address(agent_remote_address);
-        agent_sess->set_port(agent_remote_port);
-        LOG_INFO("Receive connection from agent: " << agent_remote_address << ":" << agent_remote_port);
-
-        try {
-            controller->associate_sess(agent_sess);
-        } catch (...) {
-            LOG_ERROR("Associate session Exception!!!")
+        if (sess_exist(agent_remote_address, agent_remote_port)) {
+            LOG_ERROR("Agent already exist, agent: " << agent_remote_address << ":" << agent_remote_port)
             invalid_and_remove_sess(agent_sess);
+        } else {
+            agent_sess->set_address(agent_remote_address);
+            agent_sess->set_port(agent_remote_port);
+            LOG_INFO("Receive connection from agent: " << agent_remote_address << ":" << agent_remote_port);
+
+            try {
+                controller->associate_sess(agent_sess);
+                start_read(agent_sess);
+            } catch (...) {
+                LOG_ERROR("Associate session Exception!!!")
+                invalid_and_remove_sess(agent_sess);
+            }
         }
-        start_read(agent_sess);
     } else {
         LOG_ERROR("Accept session error: " << error)
         invalid_and_remove_sess(agent_sess);
