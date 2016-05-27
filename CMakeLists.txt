@@ -55,6 +55,6 @@ add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_F
 target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES})
 
 # test
-add_executable(opg_test tests/common_tests.cpp ${CONTROLLER_SOURCE_FILES})
-target_link_libraries(opg_test ${GTEST_BOTH_LIBRARIES})
-target_link_libraries(opg_test ${Boost_LIBRARIES})
+add_executable(ogp_test tests/common_tests.cpp ${CONTROLLER_SOURCE_FILES})
+target_link_libraries(ogp_test ${GTEST_BOTH_LIBRARIES})
+target_link_libraries(ogp_test ${Boost_LIBRARIES})
