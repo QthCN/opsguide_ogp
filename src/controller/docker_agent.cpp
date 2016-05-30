@@ -9,6 +9,9 @@
 #include "common/config.h"
 #include "common/docker_client.h"
 #include "common/log.h"
+#include "third/json/json.hpp"
+
+using json = nlohmann::json;
 
 
 void DockerAgent::init() {
@@ -64,9 +67,11 @@ void DockerAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
 
 void DockerAgent::sync() {
     auto period = static_cast<unsigned int>(config_mgr.get_item("agent_sync_period")->get_int());
-    DockerClient docker_client("");
+    auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
+    DockerClient docker_client(docker_host);
     while (true) {
-        LOG_WARN("SYNC")
+        LOG_INFO(docker_client.list_containers(1))
+        //docker_client.create_container(json::parse("{\"Hostname\":\"\",\"Domainname\": \"\",\"User\":\"\",\"Memory\":0,\"MemorySwap\":0,\"CpuShares\": 512,\"Cpuset\": \"0,1\",\"AttachStdin\":false,\"AttachStdout\":true,\"AttachStderr\":true,\"PortSpecs\":null,\"Tty\":false,\"OpenStdin\":false,\"StdinOnce\":false,\"Env\":null,\"Cmd\":[ \"date\"],\"Image\":\"centos:6\",\"Volumes\":{ \"/tmp\": {}},\"WorkingDir\":\"\",\"NetworkDisabled\": false,\"ExposedPorts\":{ \"22/tcp\": {}}}"));
         std::this_thread::sleep_for(std::chrono::seconds(period));
     }
 }

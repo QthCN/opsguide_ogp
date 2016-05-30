@@ -50,7 +50,8 @@ set(DOCKER_AGENT_SOURCE_FILES
         src/service/agent.h
         src/service/agent.cpp
         src/common/docker_client.h
-        src/common/docker_client.cpp)
+        src/common/docker_client.cpp
+        src/third/json/json.hpp)
 add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES})
 target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES})
 
