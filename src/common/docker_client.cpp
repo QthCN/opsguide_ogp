@@ -9,6 +9,8 @@
 #include "common/log.h"
 #include "third/json/json.hpp"
 
+// based on https://docs.docker.com/engine/reference/api/docker_remote_api_v1.19
+
 using json = nlohmann::json;
 
 json DockerClient::list_containers(int all) {
