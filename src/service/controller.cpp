@@ -50,13 +50,13 @@ void ControllerService::invalid_and_remove_sess(agent_sess_ptr agent_sess) {
         controller->invalid_sess(agent_sess);
         // 通知session清理相关资源
         agent_sess->invalid_sess();
-        // 删除对session的引用
-        for (auto k=agent_sessions.begin(); k!=agent_sessions.end(); k++) {
-            if ((*k)->get_address() == agent_sess->get_address()
-                && (*k)->get_port() == agent_sess->get_port()) {
-                agent_sessions.erase(k);
-                break;
-            }
+    }
+    // 删除对session的引用
+    for (auto k=agent_sessions.begin(); k!=agent_sessions.end(); k++) {
+        if ((*k)->get_address() == agent_sess->get_address()
+            && (*k)->get_port() == agent_sess->get_port()) {
+            agent_sessions.erase(k);
+            break;
         }
     }
     sess_lock.unlock();
@@ -126,7 +126,6 @@ void ControllerService::start_accept() {
     agent_sess_ptr agent_sess = std::make_shared<AgentSession>(io_service, this, controller);
     agent_sess->set_read_timeout(static_cast<unsigned int>(config_mgr.get_item("controller_read_timeout")->get_int()));
     agent_sess->set_write_timeout(static_cast<unsigned int>(config_mgr.get_item("controller_write_timeout")->get_int()));
-    agent_sessions.push_back(agent_sess);
     acceptor->async_accept(agent_sess->get_socket(),
                            boost::bind(&ControllerService::handle_accept, this,
                                        agent_sess, boost::asio::placeholders::error));
@@ -158,6 +157,7 @@ size_t ControllerService::read_completion_handler(agent_sess_ptr agent_sess, boo
 }
 
 void ControllerService::start_read(agent_sess_ptr agent_sess) {
+    if (!agent_sess->valid()) return;
     // 设置新的超时器
     agent_sess->get_read_deadline_timer().expires_from_now(
             boost::posix_time::seconds(agent_sess->get_read_timeout()));
@@ -194,6 +194,9 @@ void ControllerService::handle_accept(agent_sess_ptr agent_sess, const boost::sy
         } else {
             agent_sess->set_address(agent_remote_address);
             agent_sess->set_port(agent_remote_port);
+            sess_lock.lock();
+            agent_sessions.push_back(agent_sess);
+            sess_lock.unlock();
             LOG_INFO("Receive connection from agent: " << agent_remote_address << ":" << agent_remote_port);
 
             try {
@@ -312,6 +315,10 @@ void ControllerService::handle_read(agent_sess_ptr agent_sess, boost::system::er
                     // controller处理消息异常
                 }
                 agent_sess->set_cmsg_length(0);
+
+                if (!agent_sess->valid()) {
+                    enough_data = false;
+                }
 
                 if (agent_sess->get_read_buf().size() < msg_length_hdr_size) {
                     enough_data = false;

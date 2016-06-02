@@ -10,10 +10,13 @@
 enum class MsgType: unsigned int {
     // controller
     CT_DOCKER_HEARTBEAT_RES = 0,
+    CT_DOCKER_RUNTIME_INFO_SYNC_RES = 1,
+    CT_DOCKER_RUNTIME_INFO_SYNC_REQ = 2,
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
-    DA_DOCKER_MACHINE_INFO_SYNC_REQ = 3001,
+    DA_DOCKER_RUNTIME_INFO_SYNC_REQ = 3001,
+    DA_DOCKER_SAY_HI = 3002,
 
 };
 

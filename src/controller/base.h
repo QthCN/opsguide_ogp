@@ -24,4 +24,40 @@ public:
     virtual void invalid_sess(sess_ptr sess) = 0;
 };
 
+template <typename AGENT, typename PROTOBUF_MSG>
+void send_msg(std::mutex &lock, AGENT agent, PROTOBUF_MSG &protobuf_msg, MsgType msg_type) {
+    lock.lock();
+    if (agent->get_sess() != nullptr) {
+        auto msg_size = protobuf_msg.ByteSize();
+        char *msg_data = new char[msg_size];
+        protobuf_msg.SerializeToArray(msg_data, msg_size);
+        agent->get_sess()->send_msg(
+                std::make_shared<Message>(
+                        msg_type,
+                        msg_data,
+                        msg_size
+                )
+        );
+    }
+    lock.unlock();
+};
+
+template <typename PROTOBUF_MSG>
+void send_msg(std::mutex &lock, sess_ptr sess, PROTOBUF_MSG &protobuf_msg, MsgType msg_type) {
+    lock.lock();
+    if (sess != nullptr) {
+        auto msg_size = protobuf_msg.ByteSize();
+        char *msg_data = new char[msg_size];
+        protobuf_msg.SerializeToArray(msg_data, msg_size);
+        sess->send_msg(
+                std::make_shared<Message>(
+                        msg_type,
+                        msg_data,
+                        msg_size
+                )
+        );
+    }
+    lock.unlock();
+}
+
 #endif //OGP_CONTROLLER_BASE_H

@@ -16,6 +16,14 @@ include_directories(${GTEST_INCLUDE_DIRS})
 find_package(Restclient-cpp)
 include_directories(${LIBRESTCLIENT_CPP_INCLUDE_DIRS})
 
+find_package(Mysqlcppconn)
+include_directories(${LIBMYSQLCPPCONN_INCLUDE_DIRS})
+
+find_package(Protobuf REQUIRED)
+file(GLOB ProtoFiles "${CMAKE_CURRENT_SOURCE_DIR}/protobuf/*.proto")
+PROTOBUF_GENERATE_CPP(ProtoSources ProtoHeaders ${ProtoFiles})
+include_directories(${CMAKE_BINARY_DIR})
+
 # controller
 set(CONTROLLER_SOURCE_FILES
         src/common/utils.h
@@ -30,9 +38,11 @@ set(CONTROLLER_SOURCE_FILES
         src/service/controller.cpp
         src/service/session.h
         src/service/message.h
-        src/controller/base.h)
-add_executable(ogp-controller src/cli/controller.cpp ${CONTROLLER_SOURCE_FILES})
-target_link_libraries(ogp-controller ${Boost_LIBRARIES})
+        src/controller/base.h
+        src/model/model.h
+        src/model/model.cpp)
+add_executable(ogp-controller src/cli/controller.cpp ${CONTROLLER_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
+target_link_libraries(ogp-controller ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY} ${LIBMYSQLCPPCONN_LIBRARIES})
 
 # docker agent
 set(DOCKER_AGENT_SOURCE_FILES
@@ -52,8 +62,8 @@ set(DOCKER_AGENT_SOURCE_FILES
         src/common/docker_client.h
         src/common/docker_client.cpp
         src/third/json/json.hpp)
-add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES})
-target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES})
+add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
+target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} )
 
 # test
 add_executable(ogp_test tests/common_tests.cpp ${CONTROLLER_SOURCE_FILES})

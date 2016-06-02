@@ -57,8 +57,8 @@ public:
         stopped = true;
         boost::system::error_code ignored_ec;
         agent_socket.close(ignored_ec);
-        read_deadline_timer.cancel();
-        write_deadline_timer.cancel();
+        read_deadline_timer.cancel(ignored_ec);
+        write_deadline_timer.cancel(ignored_ec);
         while (!messages.empty()) {messages.pop();}
     }
     unsigned int get_cmsg_length() {return cmsg_length;}

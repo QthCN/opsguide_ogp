@@ -22,6 +22,7 @@ public:
 private:
     sess_ptr controller_sess = nullptr;
     std::mutex agent_lock;
+    void handle_ct_sync_msg(sess_ptr sess, msg_ptr msg);
 
 };
 

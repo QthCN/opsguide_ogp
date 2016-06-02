@@ -61,13 +61,13 @@ void AgentService::invalid_and_remove_sess(controller_sess_ptr controller_sess) 
         controller->invalid_sess(controller_sess);
         // 通知session清理相关资源
         controller_sess->invalid_sess();
-        // 删除对session的引用
-        for (auto k=controller_sessions.begin(); k!=controller_sessions.end(); k++) {
-            if ((*k)->get_address() == controller_sess->get_address()
-                && (*k)->get_port() == controller_sess->get_port()) {
-                controller_sessions.erase(k);
-                break;
-            }
+    }
+    // 删除对session的引用
+    for (auto k=controller_sessions.begin(); k!=controller_sessions.end(); k++) {
+        if ((*k)->get_address() == controller_sess->get_address()
+            && (*k)->get_port() == controller_sess->get_port()) {
+            controller_sessions.erase(k);
+            break;
         }
     }
     sess_lock.unlock();
@@ -79,10 +79,16 @@ void AgentService::handle_connect(controller_sess_ptr controller_sess, boost::sy
         auto controller_remote_port = controller_sess->get_socket().remote_endpoint().port();
         controller_sess->set_address(controller_remote_address);
         controller_sess->set_port(controller_remote_port);
-        LOG_INFO("Connect to controller: " << controller_remote_address << ":" << controller_remote_port);
+        LOG_INFO("Connected to controller: " << controller_remote_address << ":" << controller_remote_port);
 
         try {
             controller->associate_sess(controller_sess);
+            // 通知Controller我是一个docker agent
+            controller_sess->send_msg(std::make_shared<Message>(
+                                        MsgType::DA_DOCKER_SAY_HI,
+                                        new char[0],
+                                        0
+                                ));
         } catch (...) {
             LOG_ERROR("Session association Exception!!!")
             invalid_and_remove_sess(controller_sess);
@@ -99,8 +105,8 @@ void AgentService::handle_connect(controller_sess_ptr controller_sess, boost::sy
 void AgentService::reconnect() {
     sess_lock.lock();
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    LOG_INFO("Reconnect to controller now.")
     if (controller_sessions.size() == 0) {
+        LOG_INFO("Reconnect to controller now.")
         start_connect();
     }
     sess_lock.unlock();
@@ -168,6 +174,7 @@ size_t AgentService::read_completion_handler(controller_sess_ptr controller_sess
 }
 
 void AgentService::start_read(controller_sess_ptr controller_sess) {
+    if (!controller_sess->valid()) return;
     // 设置新的超时器
     controller_sess->get_read_deadline_timer().expires_from_now(
             boost::posix_time::seconds(controller_sess->get_read_timeout()));
@@ -302,6 +309,10 @@ void AgentService::handle_read(controller_sess_ptr controller_sess, boost::syste
                     // controller处理消息异常
                 }
                 controller_sess->set_cmsg_length(0);
+
+                if (!controller_sess->valid()) {
+                    enough_data = false;
+                }
 
                 if (controller_sess->get_read_buf().size() < msg_length_hdr_size) {
                     enough_data = false;

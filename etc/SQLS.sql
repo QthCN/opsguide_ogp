@@ -6,7 +6,6 @@ USE ogp;
 CREATE TABLE MACHINE_APP_LIST (
     id INT NOT NULL AUTO_INCREMENT,
     ip_address VARCHAR(32) COMMENT '主机的IP地址',
-    port INT NOT NULL COMMENT '主机的端口号',
     app_id INT NOT NULL COMMENT '主机上运行的APP的ID',
     version_id INT NOT NULL COMMENT '主机上运行的APP的版本号ID',
     PRIMARY KEY(id),
@@ -25,7 +24,7 @@ CREATE TABLE APP_LIST (
 
 CREATE TABLE APP_VERSIONS (
     id INT NOT NULL AUTO_INCREMENT COMMENT 'VERSION ID',
-    app_id INT NOT NULL COMMENT '主机上运行的APP的id',
+    app_id INT NOT NULL COMMENT 'APP的id',
     version VARCHAR(1024) NOT NULL COMMENT 'APP版本',
     registe_time DATETIME NOT NULL COMMENT '版本注册时间',
     description VARCHAR(2048) NOT NULL COMMENT '版本说明',
