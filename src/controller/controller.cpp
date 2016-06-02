@@ -12,8 +12,10 @@
 #include "model/model.h"
 #include "ogp_msg.pb.h"
 
+// agent type
 #define DA_NAME "DOCKER_AGENT"
 #define NX_NAME "NGINX_AGENT"
+#define MG_NAME "MANAGE_AGENT"
 
 class MachineApplication {
 public:
@@ -73,7 +75,9 @@ public:
     std::mutex &get_agent_lock() {return agent_lock;}
 
 private:
+    // Agent关联的session
     sess_ptr sess;
+    // Agent类型
     std::string agent_type;
     // 最近一次从DB同步该Agent的时刻
     std::time_t last_sync_db_time;
@@ -81,7 +85,9 @@ private:
     std::time_t last_heartbeat_time;
     // 最近一次运行时信息同步的时刻
     std::time_t last_sync_time;
+    // Agent所在主机IP
     std::string machine_ip;
+    // Agent操作的并发锁
     std::mutex agent_lock;
 };
 typedef std::shared_ptr<Agent> agent_ptr;

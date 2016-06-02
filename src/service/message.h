@@ -18,6 +18,12 @@ enum class MsgType: unsigned int {
     DA_DOCKER_RUNTIME_INFO_SYNC_REQ = 3001,
     DA_DOCKER_SAY_HI = 3002,
 
+    // nginx agent
+    // ...
+
+    // manage agent
+    // ...
+
 };
 
 class Message {
