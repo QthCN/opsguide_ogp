@@ -60,7 +60,9 @@ void Logger::operator()(std::string const &message, char const *function, char c
     os << message;
 
     auto msg = os.str();
+    lock.lock();
     std::cout << msg << std::endl;
+    lock.unlock();
 }
 
 void Logger::set_level(Level level) {

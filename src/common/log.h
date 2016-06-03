@@ -35,6 +35,7 @@ public:
 
 private:
     Level level;
+    std::mutex lock;
 };
 
 
