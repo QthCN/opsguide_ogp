@@ -79,6 +79,103 @@ private:
 };
 typedef std::shared_ptr<MachineAppsInfoModel> machine_apps_info_model_ptr;
 
+class ApplicationModel {
+public:
+    ApplicationModel() {}
+
+    int get_id() const {
+        return id;
+    }
+
+    void set_id(int id) {
+        ApplicationModel::id = id;
+    }
+
+    const std::string &get_source() const {
+        return source;
+    }
+
+    void set_source(const std::string &source) {
+        ApplicationModel::source = source;
+    }
+
+    const std::string &get_name() const {
+        return name;
+    }
+
+    void set_name(const std::string &name) {
+        ApplicationModel::name = name;
+    }
+
+    const std::string &get_description() const {
+        return description;
+    }
+
+    void set_description(const std::string &description) {
+        ApplicationModel::description = description;
+    }
+
+private:
+    int id;
+    std::string source;
+    std::string name;
+    std::string description;
+};
+typedef std::shared_ptr<ApplicationModel> application_model_ptr;
+
+class AppVersionsModel {
+public:
+    AppVersionsModel() {}
+
+    int get_id() const {
+        return id;
+    }
+
+    void set_id(int id) {
+        AppVersionsModel::id = id;
+    }
+
+    int get_app_id() const {
+        return app_id;
+    }
+
+    void set_app_id(int app_id) {
+        AppVersionsModel::app_id = app_id;
+    }
+
+    const std::string &get_version() const {
+        return version;
+    }
+
+    void set_version(const std::string &version) {
+        AppVersionsModel::version = version;
+    }
+
+    const std::string &get_registe_time() const {
+        return registe_time;
+    }
+
+    void set_registe_time(const std::string &registe_time) {
+        AppVersionsModel::registe_time = registe_time;
+    }
+
+    const std::string &get_description() const {
+        return description;
+    }
+
+    void set_description(const std::string &description) {
+        AppVersionsModel::description = description;
+    }
+
+private:
+    int id;
+    int app_id;
+    std::string version;
+    std::string registe_time;
+    std::string description;
+};
+typedef std::shared_ptr<AppVersionsModel> app_versions_model_ptr;
+
 // todo(tianhuan)目前使用短连接的形式,后续考虑使用连接池
 class ModelMgr {
 public:
@@ -99,6 +196,8 @@ public:
                 mysql_schema(mysql_schema_) {}
 
     std::vector<machine_apps_info_model_ptr> get_machine_apps_info();
+    std::vector<application_model_ptr> get_applications();
+    app_versions_model_ptr get_app_versions_by_app_id(int app_id);
 
 private:
     std::string mysql_address;

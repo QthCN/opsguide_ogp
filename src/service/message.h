@@ -12,6 +12,7 @@ enum class MsgType: unsigned int {
     CT_DOCKER_HEARTBEAT_RES = 0,
     CT_DOCKER_RUNTIME_INFO_SYNC_RES = 1,
     CT_DOCKER_RUNTIME_INFO_SYNC_REQ = 2,
+    CT_PORTAL_GET_APPS_RES = 3,
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
@@ -21,8 +22,8 @@ enum class MsgType: unsigned int {
     // nginx agent
     // ...
 
-    // manage agent
-    // ...
+    // portal, 注意这里的消息ID被portal的消息ID依赖
+    PO_PORTAL_GET_APPS_REQ = 9000,
 
 };
 

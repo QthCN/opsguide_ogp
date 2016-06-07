@@ -22,6 +22,7 @@ public:
 private:
     void handle_da_sync_msg(sess_ptr sess, msg_ptr msg);
     void handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg);
     std::mutex g_lock;
 
 };

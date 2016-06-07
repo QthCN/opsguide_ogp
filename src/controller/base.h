@@ -60,4 +60,20 @@ void send_msg(std::mutex &lock, sess_ptr sess, PROTOBUF_MSG &protobuf_msg, MsgTy
     lock.unlock();
 }
 
+template <typename PROTOBUF_MSG>
+void send_msg(sess_ptr sess, PROTOBUF_MSG &protobuf_msg, MsgType msg_type) {
+    if (sess != nullptr) {
+        auto msg_size = protobuf_msg.ByteSize();
+        char *msg_data = new char[msg_size];
+        protobuf_msg.SerializeToArray(msg_data, msg_size);
+        sess->send_msg(
+                std::make_shared<Message>(
+                        msg_type,
+                        msg_data,
+                        msg_size
+                )
+        );
+    }
+}
+
 #endif //OGP_CONTROLLER_BASE_H

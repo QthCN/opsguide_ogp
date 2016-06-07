@@ -57,3 +57,24 @@ message DockerTargetContainerInfo {
 message DockerTargetRuntimeInfo {
     repeated DockerTargetContainerInfo containers = 1;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message ControllerApplicationVersion {
+    required int32 id = 1;
+    required string version = 2;
+    required string registe_time = 3;
+    required string description = 4;
+}
+
+message ControllerApplicationInfo {
+    required int32 id = 1;
+    required string source = 2;
+    required string name = 3;
+    required string description = 4;
+    repeated ControllerApplicationVersion versions = 5;
+}
+
+message ControllerApplicationsList {
+    repeated ControllerApplicationInfo applications = 1;
+}

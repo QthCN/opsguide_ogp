@@ -17,6 +17,71 @@
 #define NX_NAME "NGINX_AGENT"
 #define MG_NAME "MANAGE_AGENT"
 
+class AppVersion {
+public:
+    AppVersion(int id, int app_id, const std::string &version, const std::string &registe_time,
+               const std::string &description) : id(id), app_id(app_id), version(version), registe_time(registe_time),
+                                                 description(description) { }
+
+    int get_id() { return id;}
+    int get_app_id() {return app_id;}
+    std::string get_version() {return version;}
+    std::string get_registe_time() {return registe_time;}
+    std::string get_description() {return description;}
+
+private:
+    int id;
+    int app_id;
+    std::string version;
+    std::string registe_time;
+    std::string description;
+};
+typedef std::shared_ptr<AppVersion> app_version_ptr;
+
+class Application {
+public:
+
+    Application(int id, const std::string &source,
+                const std::string &name, const std::string &description) : id(id),
+                                                                           source(source),
+                                                                           name(name),
+                                                                           description(description) { }
+    int get_id() {return id;}
+    std::string get_source() {return source;}
+    std::string get_name() {return name;}
+    std::string get_description() {return description;}
+    void add_version(app_version_ptr v) {
+        versions_lock.lock();
+        versions.push_back(v);
+        versions_lock.unlock();
+    }
+    std::vector<app_version_ptr> get_versions() {return versions;}
+
+private:
+    int id;
+    std::string source;
+    std::string name;
+    std::string description;
+    std::vector<app_version_ptr> versions;
+    std::mutex versions_lock;
+};
+typedef std::shared_ptr<Application> application_ptr;
+
+class Applications {
+public:
+    void add_application(application_ptr a) {
+        applications_lock.lock();
+        applications.push_back(a);
+        applications_lock.unlock();
+    }
+    std::vector<application_ptr> get_applications() {return applications;}
+private:
+    std::vector<application_ptr> applications;
+    std::mutex applications_lock;
+};
+
+Applications applications;
+
 class MachineApplication {
 public:
     enum class Status {
@@ -48,7 +113,7 @@ private:
     std::string version;
     Status status;
 };
-typedef std::shared_ptr<MachineApplication> application_ptr;
+typedef std::shared_ptr<MachineApplication> machine_application_ptr;
 
 class Agent {
 public:
@@ -98,7 +163,7 @@ public:
 
     }
 
-    application_ptr get_application(int id) {
+    machine_application_ptr get_application(int id) {
         applications_lock.lock();
         for (auto a :applications) {
             if (a->get_uniq_id() == id) {
@@ -110,7 +175,7 @@ public:
         return nullptr;
     }
 
-    void add_application(application_ptr app) {
+    void add_application(machine_application_ptr app) {
         applications_lock.lock();
         for (auto a :applications) {
             if (a->get_uniq_id() == app->get_uniq_id()) {
@@ -122,10 +187,10 @@ public:
         applications_lock.unlock();
     }
 
-    std::vector<application_ptr> get_applications() {return applications;}
+    std::vector<machine_application_ptr> get_applications() {return applications;}
 
 private:
-    std::vector<application_ptr> applications;
+    std::vector<machine_application_ptr> applications;
     std::mutex applications_lock;
 };
 
@@ -211,9 +276,32 @@ public:
     }
 
     void init() {
-        LOG_INFO("Initialize agents from DB.")
-        // 从数据库中获取agent信息并建通过这些信息初始化agents信息
         auto model_mgr = ModelMgr();
+
+        LOG_INFO("Initialize applications from DB.")
+        auto applications_info = model_mgr.get_applications();
+        for (auto application: applications_info) {
+            auto a = std::make_shared<Application>(
+                    application->get_id(),
+                    application->get_source(),
+                    application->get_name(),
+                    application->get_description()
+            );
+            auto v = model_mgr.get_app_versions_by_app_id(a->get_id());
+            if (v != nullptr) {
+                auto ver = std::make_shared<AppVersion>(
+                        v->get_id(),
+                        v->get_app_id(),
+                        v->get_version(),
+                        v->get_registe_time(),
+                        v->get_description()
+                );
+                a->add_version(ver);
+            }
+            applications.add_application(a);
+        }
+
+        LOG_INFO("Initialize agents from DB.")
         auto machine_apps_info = model_mgr.get_machine_apps_info();
         for (auto machine_app_info: machine_apps_info) {
             auto key = get_key(machine_app_info->get_ip_address(), DA_NAME);
@@ -253,7 +341,7 @@ Agents agents;
 
 void Controller::init() {
     agents.init();
-    LOG_INFO("Controller begin initialization now.")
+    LOG_INFO("Controller initialization finished.")
 }
 
 void Controller::associate_sess(sess_ptr sess) {
@@ -289,7 +377,7 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::DA_DOCKER_SAY_HI:
             handle_da_say_hi_msg(sess, msg);
             break;
-        // docker agent发来的心跳请求
+            // docker agent发来的心跳请求
         case MsgType::DA_DOCKER_HEARTBEAT_REQ:
             // 更新心跳同步时间
             agent = agents.get_agent_by_sess(sess, DA_NAME);
@@ -302,13 +390,41 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
                     )
             );
             break;
-        // docker agent发来的其当前运行时信息同步请求
+            // docker agent发来的其当前运行时信息同步请求
         case MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ:
             handle_da_sync_msg(sess, msg);
+            break;
+
+            // portal发来的获取app列表的请求
+        case MsgType::PO_PORTAL_GET_APPS_REQ:
+            handle_po_get_apps_msg(sess, msg);
             break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void Controller::handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg) {
+    g_lock.lock();
+    ogp_msg::ControllerApplicationsList applications_list;
+    auto apps = applications.get_applications();
+    for (auto app: apps) {
+        auto a = applications_list.add_applications();
+        a->set_id(app->get_id());
+        a->set_name(app->get_name());
+        a->set_description(app->get_description());
+        a->set_source(app->get_source());
+
+        for (auto ver: app->get_versions()) {
+            auto v = a->add_versions();
+            v->set_id(ver->get_id());
+            v->set_description(ver->get_description());
+            v->set_registe_time(ver->get_registe_time());
+            v->set_version(ver->get_version());
+        }
+    }
+    g_lock.unlock();
+    send_msg(sess, applications_list, MsgType::CT_PORTAL_GET_APPS_RES);
 }
 
 void Controller::handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg) {
