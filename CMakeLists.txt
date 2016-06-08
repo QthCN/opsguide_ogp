@@ -65,6 +65,15 @@ set(DOCKER_AGENT_SOURCE_FILES
 add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} )
 
+# ogp_cli
+set(OGP_CLI_SOURCE_FILES
+        src/common/log.h
+        src/common/log.cpp
+        src/common/utils.h
+        src/common/utils.cpp)
+add_executable(ogp-cli src/cli/cli.cpp ${OGP_CLI_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
+target_link_libraries(ogp-cli ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY})
+
 # test
 add_executable(ogp_test tests/common_tests.cpp ${CONTROLLER_SOURCE_FILES})
 target_link_libraries(ogp_test ${GTEST_BOTH_LIBRARIES})

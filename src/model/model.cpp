@@ -12,11 +12,12 @@
 
 #include "common/log.h"
 
-#define SQLQUERY_BEGIN try {\
-                                auto conn = get_conn();\
-                                sql::Statement *stmt = nullptr;\
-                                sql::ResultSet *res = nullptr;\
-                                sql::PreparedStatement *pstmt = nullptr;
+#define SQLQUERY_BEGIN      sql::Connection *conn = nullptr;\
+                            conn = get_conn();\
+                            sql::Statement *stmt = nullptr;\
+                            sql::ResultSet *res = nullptr;\
+                            sql::PreparedStatement *pstmt = nullptr;\
+                            try {
 
 #define SQLQUERY_CLEAR_RESOURCE if (stmt != nullptr) {delete stmt;}\
                                 if (res != nullptr) {delete res;}\
@@ -25,8 +26,11 @@
 
 #define SQLQUERY_END } catch (sql::SQLException &e) {\
                      LOG_ERROR("SQLException: " << e.what() << " MySQL error code: " << e.getErrorCode() << " SQLState: " << e.getSQLState())\
-                     throw std::runtime_error("SQLException");\
-                }
+                     if (stmt != nullptr) {delete stmt;}\
+                     if (res != nullptr) {delete res;}\
+                     if (pstmt != nullptr) {delete pstmt;}\
+                     if (conn != nullptr) {close_conn(conn);}\
+                     throw e;}
 
 sql::Connection *ModelMgr::get_conn() {
     auto driver = get_driver_instance();
@@ -39,6 +43,7 @@ void ModelMgr::close_conn(sql::Connection *conn) {
     if (conn == nullptr) {
         return;
     }
+    conn->close();
     delete conn;
 }
 
@@ -117,6 +122,74 @@ app_versions_model_ptr ModelMgr::get_app_versions_by_app_id(int app_id) {
         SQLQUERY_CLEAR_RESOURCE
 
         return result;
+
+    SQLQUERY_END
+}
+
+void ModelMgr::add_app(std::string app_name, std::string app_source, std::string app_desc, std::string app_version,
+                       std::string app_version_desc, int *app_id, int *version_id, std::string *registe_time) {
+    SQLQUERY_BEGIN
+        stmt = conn->createStatement();
+        stmt->execute("LOCK TABLES APP_LIST WRITE, APP_VERSIONS WRITE");
+        pstmt = conn->prepareStatement("SELECT APP_VERSIONS.id FROM APP_LIST, APP_VERSIONS "
+                                               "WHERE APP_LIST.id=APP_VERSIONS.app_id "
+                                               "AND APP_LIST.name=? "
+                                               "AND APP_VERSIONS.version=?");
+        pstmt->setString(1, app_name);
+        pstmt->setString(2, app_version);
+        res = pstmt->executeQuery();
+        if (res->next()) {
+            LOG_ERROR("application with name: " << app_name << " and version: " << app_version << " already exist.")
+            stmt->execute("UNLOCK TABLES");
+            SQLQUERY_CLEAR_RESOURCE
+            throw std::runtime_error("application with name: " + app_name
+                                     + " and version: " + app_version
+                                     + " already exist.");
+        } else {
+            delete pstmt;
+            delete res;
+            pstmt = conn->prepareStatement("SELECT id FROM APP_LIST WHERE name=? ");
+            pstmt->setString(1, app_name);
+            res = pstmt->executeQuery();
+
+            if (res->next() == false) {
+                delete pstmt;
+                delete res;
+                pstmt = conn->prepareStatement("INSERT INTO APP_LIST(source, name, description) VALUES (?, ?, ?)");
+                pstmt->setString(1, app_source);
+                pstmt->setString(2, app_name);
+                pstmt->setString(3, app_desc);
+                pstmt->execute();
+                delete pstmt;
+            }
+            pstmt = conn->prepareStatement("SELECT id FROM APP_LIST WHERE name=? ");
+            pstmt->setString(1, app_name);
+            res = pstmt->executeQuery();
+            res->next();
+            *app_id = res->getInt("id");
+            delete pstmt;
+            delete res;
+
+            pstmt = conn->prepareStatement("INSERT INTO APP_VERSIONS(app_id, version, registe_time, description) "
+                                                   "VALUES (?, ?, NOW(), ?)");
+            pstmt->setInt(1, *app_id);
+            pstmt->setString(2, app_version);
+            pstmt->setString(3, app_version_desc);
+            pstmt->execute();
+            delete pstmt;
+
+            pstmt = conn->prepareStatement("SELECT id, registe_time FROM APP_VERSIONS "
+                                                   "WHERE app_id=? AND version=?");
+            pstmt->setInt(1, *app_id);
+            pstmt->setString(2, app_version);
+            res = pstmt->executeQuery();
+            res->next();
+            *version_id = res->getInt("id");
+            *registe_time = res->getString("registe_time");
+
+            stmt->execute("UNLOCK TABLES");
+            SQLQUERY_CLEAR_RESOURCE
+        }
 
     SQLQUERY_END
 }

@@ -8,11 +8,14 @@
 #include "common/log.h"
 
 enum class MsgType: unsigned int {
+    OGP_NULL_MSG = 99999,
+
     // controller
     CT_DOCKER_HEARTBEAT_RES = 0,
     CT_DOCKER_RUNTIME_INFO_SYNC_RES = 1,
     CT_DOCKER_RUNTIME_INFO_SYNC_REQ = 2,
     CT_PORTAL_GET_APPS_RES = 3,
+    CT_CLI_ADD_APP_RES = 4,
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
@@ -24,6 +27,9 @@ enum class MsgType: unsigned int {
 
     // portal, 注意这里的消息ID被portal的消息ID依赖
     PO_PORTAL_GET_APPS_REQ = 9000,
+
+    // CLI
+    CI_CLI_ADD_APP_REQ = 12000,
 
 };
 

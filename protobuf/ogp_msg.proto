@@ -75,6 +75,32 @@ message ControllerApplicationInfo {
     repeated ControllerApplicationVersion versions = 5;
 }
 
+// 获取应用列表信息
 message ControllerApplicationsList {
     repeated ControllerApplicationInfo applications = 1;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 消息头
+message MsgHeader {
+    // rc为0表示成功,否则表示失败。失败原因参见message
+    required int32 rc = 1;
+    optional string message = 2;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 增加应用请求
+message AddApplicationReq {
+    required string app_name = 1;
+    required string app_version = 2;
+    required string app_source = 3;
+    required string app_version_desc = 4;
+    optional string app_desc = 5;
+}
+
+// 增加应用响应
+message AddApplicationRes {
+    required MsgHeader header = 1;
 }

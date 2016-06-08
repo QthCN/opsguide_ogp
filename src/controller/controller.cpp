@@ -74,6 +74,32 @@ public:
         applications.push_back(a);
         applications_lock.unlock();
     }
+
+    application_ptr get_application(int app_id) {
+        application_ptr a = nullptr;
+        applications_lock.lock();
+        for (auto &app: applications) {
+            if (app->get_id() == app_id) {
+                a = app;
+                break;
+            }
+        }
+        applications_lock.unlock();
+        return a;
+    }
+
+    application_ptr get_application(std::string app_name) {
+        application_ptr a = nullptr;
+        applications_lock.lock();
+        for (auto &app: applications) {
+            if (app->get_name() == app_name) {
+                a = app;
+                break;
+            }
+        }
+        applications_lock.unlock();
+        return a;
+    }
     std::vector<application_ptr> get_applications() {return applications;}
 private:
     std::vector<application_ptr> applications;
@@ -399,9 +425,71 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::PO_PORTAL_GET_APPS_REQ:
             handle_po_get_apps_msg(sess, msg);
             break;
+
+            // cli发来的创建app请求
+        case MsgType::CI_CLI_ADD_APP_REQ:
+            handle_ci_add_app(sess, msg);
+            break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
+    auto model_mgr = ModelMgr();
+    ogp_msg::AddApplicationReq add_app_req;
+    ogp_msg::AddApplicationRes add_app_res;
+    int app_id;
+    int version_id;
+    std::string registe_time;
+    int rc = 0;
+    std::string ret_msg = "";
+    try {
+        add_app_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+        model_mgr.add_app(
+                add_app_req.app_name(),
+                add_app_req.app_source(),
+                add_app_req.app_desc(),
+                add_app_req.app_version(),
+                add_app_req.app_version_desc(),
+                &app_id,
+                &version_id,
+                &registe_time
+        );
+        g_lock.lock();
+        auto app = applications.get_application(add_app_req.app_name());
+        if (app == nullptr) {
+            app = std::make_shared<Application>(
+                    app_id,
+                    add_app_req.app_source(),
+                    add_app_req.app_name(),
+                    add_app_req.app_desc()
+            );
+            applications.add_application(app);
+        }
+        g_lock.unlock();
+        app->add_version(
+                std::make_shared<AppVersion>(
+                    version_id,
+                    app_id,
+                    add_app_req.app_version(),
+                    registe_time,
+                    add_app_req.app_version_desc()
+                )
+        );
+    } catch (std::runtime_error &e) {
+        rc = 1;
+        ret_msg = e.what();
+    } catch (sql::SQLException &e) {
+        rc = 2;
+        ret_msg = e.what();
+    }
+
+    auto header = add_app_res.mutable_header();
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, add_app_res, MsgType::CT_CLI_ADD_APP_RES);
+
 }
 
 void Controller::handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg) {

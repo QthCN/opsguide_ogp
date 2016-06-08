@@ -161,7 +161,6 @@ size_t AgentService::read_completion_handler(controller_sess_ptr controller_sess
         return 1024;
     } else if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
         // 对端中断了连接
-        LOG_ERROR("read_completion_handler error: " << error)
         invalid_and_remove_sess(controller_sess);
         reconnect();
         return 0;
