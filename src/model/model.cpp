@@ -32,6 +32,14 @@
                      if (conn != nullptr) {close_conn(conn);}\
                      throw e;}
 
+template<typename PTR>
+void delete_ptr(PTR p) {
+    if (p != nullptr) {
+        delete p;
+        p = nullptr;
+    }
+}
+
 sql::Connection *ModelMgr::get_conn() {
     auto driver = get_driver_instance();
     auto conn = driver->connect(mysql_address, mysql_user, mysql_password);
@@ -146,29 +154,29 @@ void ModelMgr::add_app(std::string app_name, std::string app_source, std::string
                                      + " and version: " + app_version
                                      + " already exist.");
         } else {
-            delete pstmt;
-            delete res;
+            delete_ptr(pstmt);
+            delete_ptr(res);
             pstmt = conn->prepareStatement("SELECT id FROM APP_LIST WHERE name=? ");
             pstmt->setString(1, app_name);
             res = pstmt->executeQuery();
 
             if (res->next() == false) {
-                delete pstmt;
-                delete res;
+                delete_ptr(pstmt);
+                delete_ptr(res);
                 pstmt = conn->prepareStatement("INSERT INTO APP_LIST(source, name, description) VALUES (?, ?, ?)");
                 pstmt->setString(1, app_source);
                 pstmt->setString(2, app_name);
                 pstmt->setString(3, app_desc);
                 pstmt->execute();
-                delete pstmt;
+                delete_ptr(pstmt);
             }
             pstmt = conn->prepareStatement("SELECT id FROM APP_LIST WHERE name=? ");
             pstmt->setString(1, app_name);
             res = pstmt->executeQuery();
             res->next();
             *app_id = res->getInt("id");
-            delete pstmt;
-            delete res;
+            delete_ptr(pstmt);
+            delete_ptr(res);
 
             pstmt = conn->prepareStatement("INSERT INTO APP_VERSIONS(app_id, version, registe_time, description) "
                                                    "VALUES (?, ?, NOW(), ?)");
@@ -176,7 +184,7 @@ void ModelMgr::add_app(std::string app_name, std::string app_source, std::string
             pstmt->setString(2, app_version);
             pstmt->setString(3, app_version_desc);
             pstmt->execute();
-            delete pstmt;
+            delete_ptr(pstmt);
 
             pstmt = conn->prepareStatement("SELECT id, registe_time FROM APP_VERSIONS "
                                                    "WHERE app_id=? AND version=?");
