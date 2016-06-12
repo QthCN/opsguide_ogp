@@ -394,14 +394,11 @@ void Controller::sync() {
 
 void Controller::invalid_sess(sess_ptr sess) {
     g_lock.lock();
-    LOG_INFO("invalid_sess: " << sess->get_address() << ":" << sess->get_port())
     auto agent = agents.get_agent_by_sess(sess);
     if (agent == nullptr) {
-        LOG_WARN("Invalid a no-agent-associated sess.")
         g_lock.unlock();
         return;
     }
-    LOG_INFO("Set sess = nullptr, agent key: " << agents.get_key(agent))
     agent->set_sess(nullptr);
     g_lock.unlock();
 }
@@ -464,9 +461,9 @@ void Controller::handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg) {
         agent->set_last_sync_db_time(a->get_last_sync_db_time());
         agent->set_last_sync_time(a->get_last_sync_time());
         if (a->get_sess() == nullptr) {
-            agent->set_has_sess(0);
-        } else {
             agent->set_has_sess(1);
+        } else {
+            agent->set_has_sess(0);
         }
 
         if (a->get_agent_type() == DA_NAME) {
