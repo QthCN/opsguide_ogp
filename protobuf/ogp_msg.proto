@@ -1,5 +1,16 @@
 package ogp_msg;
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 消息头
+message MsgHeader {
+    // rc为0表示成功,否则表示失败。失败原因参见message
+    required int32 rc = 1;
+    optional string message = 2;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 message DockerContainerLabel {
     required string name = 1;
     required string value = 2;
@@ -77,16 +88,8 @@ message ControllerApplicationInfo {
 
 // 获取应用列表信息
 message ControllerApplicationsList {
-    repeated ControllerApplicationInfo applications = 1;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// 消息头
-message MsgHeader {
-    // rc为0表示成功,否则表示失败。失败原因参见message
-    required int32 rc = 1;
-    optional string message = 2;
+    required MsgHeader header = 1;
+    repeated ControllerApplicationInfo applications = 2;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,3 +107,29 @@ message AddApplicationReq {
 message AddApplicationRes {
     required MsgHeader header = 1;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message ControllerAgentBindApps {
+    required string app_name = 1;
+    required string app_version = 2;
+    required int32 app_id = 3;
+    required int32 uniq_id = 4;
+}
+
+message ControllerAgentInfo {
+    required string type = 1;
+    required string ip = 2;
+    required int32 has_sess = 3;
+    required int64 last_sync_db_time = 4;
+    required int64 last_heartbeat_time = 5;
+    required int64 last_sync_time = 6;
+    repeated ControllerAgentBindApps applications = 7;
+}
+
+// 获取agent列表信息
+message ControllerAgentList {
+    required MsgHeader header = 1;
+    repeated ControllerAgentInfo agents = 2;
+}
+

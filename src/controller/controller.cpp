@@ -301,6 +301,16 @@ public:
         LOG_INFO("Current agents size after remove_agent: " << agents_map.size())
     }
 
+    std::vector<agent_ptr> get_agents() {
+        std::vector<agent_ptr> agents;
+        agents_map_lock.lock();
+        for (auto it=agents_map.begin(); it!=agents_map.end(); it++) {
+            agents.push_back(it->second);
+        }
+        agents_map_lock.unlock();
+        return agents;
+    };
+
     void init() {
         auto model_mgr = ModelMgr();
 
@@ -313,8 +323,8 @@ public:
                     application->get_name(),
                     application->get_description()
             );
-            auto v = model_mgr.get_app_versions_by_app_id(a->get_id());
-            if (v != nullptr) {
+            auto vs = model_mgr.get_app_versions_by_app_id(a->get_id());
+            for (auto &v: vs) {
                 auto ver = std::make_shared<AppVersion>(
                         v->get_id(),
                         v->get_app_id(),
@@ -425,6 +435,10 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::PO_PORTAL_GET_APPS_REQ:
             handle_po_get_apps_msg(sess, msg);
             break;
+            // portal发来的获取agent列表的请求
+        case MsgType::PO_PORTAL_GET_AGENTS_REQ:
+            handle_po_get_agents_msg(sess, msg);
+            break;
 
             // cli发来的创建app请求
         case MsgType::CI_CLI_ADD_APP_REQ:
@@ -433,6 +447,45 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void Controller::handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::ControllerAgentList agent_list;
+    auto header = agent_list.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    auto agents_ = agents.get_agents();
+    for (auto &a: agents_) {
+        auto agent = agent_list.add_agents();
+        agent->set_type(a->get_agent_type());
+        agent->set_ip(a->get_machine_ip());
+        agent->set_last_heartbeat_time(a->get_last_heartbeat_time());
+        agent->set_last_sync_db_time(a->get_last_sync_db_time());
+        agent->set_last_sync_time(a->get_last_sync_time());
+        if (a->get_sess() == nullptr) {
+            agent->set_has_sess(0);
+        } else {
+            agent->set_has_sess(1);
+        }
+
+        if (a->get_agent_type() == DA_NAME) {
+            auto da = std::static_pointer_cast<DockerAgent>(a);
+            auto apps = da->get_applications();
+            for (auto &app: apps) {
+                auto agent_app = agent->add_applications();
+                agent_app->set_app_name(app->get_app_name());
+                agent_app->set_app_version(app->get_version());
+                agent_app->set_app_id(app->get_app_id());
+                agent_app->set_uniq_id(app->get_uniq_id());
+            }
+        }
+
+    }
+
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, agent_list, MsgType::CT_PORTAL_GET_AGENTS_RES);
 }
 
 void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
@@ -493,8 +546,11 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
 }
 
 void Controller::handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg) {
-    g_lock.lock();
     ogp_msg::ControllerApplicationsList applications_list;
+    auto header = applications_list.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+    g_lock.lock();
     auto apps = applications.get_applications();
     for (auto app: apps) {
         auto a = applications_list.add_applications();
@@ -512,6 +568,8 @@ void Controller::handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg) {
         }
     }
     g_lock.unlock();
+    header->set_rc(rc);
+    header->set_message(ret_msg);
     send_msg(sess, applications_list, MsgType::CT_PORTAL_GET_APPS_RES);
 }
 

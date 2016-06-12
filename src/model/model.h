@@ -197,7 +197,7 @@ public:
 
     std::vector<machine_apps_info_model_ptr> get_machine_apps_info();
     std::vector<application_model_ptr> get_applications();
-    app_versions_model_ptr get_app_versions_by_app_id(int app_id);
+    std::vector<app_versions_model_ptr> get_app_versions_by_app_id(int app_id);
     void add_app(std::string app_name, std::string app_source, std::string app_desc,
                  std::string app_version, std::string app_version_desc,
                  int *app_id, int *version_id, std::string *registe_time);

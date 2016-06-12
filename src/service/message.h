@@ -16,6 +16,7 @@ enum class MsgType: unsigned int {
     CT_DOCKER_RUNTIME_INFO_SYNC_REQ = 2,
     CT_PORTAL_GET_APPS_RES = 3,
     CT_CLI_ADD_APP_RES = 4,
+    CT_PORTAL_GET_AGENTS_RES = 5,
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
@@ -27,6 +28,7 @@ enum class MsgType: unsigned int {
 
     // portal, 注意这里的消息ID被portal的消息ID依赖
     PO_PORTAL_GET_APPS_REQ = 9000,
+    PO_PORTAL_GET_AGENTS_REQ = 9001,
 
     // CLI
     CI_CLI_ADD_APP_REQ = 12000,

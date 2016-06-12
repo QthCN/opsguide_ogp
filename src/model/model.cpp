@@ -67,7 +67,8 @@ std::vector<machine_apps_info_model_ptr> ModelMgr::get_machine_apps_info() {
                                          "APP_LIST.name AS app_name "
                                          "FROM MACHINE_APP_LIST, APP_VERSIONS, APP_LIST "
                                          "WHERE MACHINE_APP_LIST.version_id=APP_VERSIONS.id "
-                                         "AND MACHINE_APP_LIST.app_id=APP_LIST.id");
+                                         "AND MACHINE_APP_LIST.app_id=APP_LIST.id "
+                                         "ORDER BY MACHINE_APP_LIST.id DESC");
         std::vector<machine_apps_info_model_ptr> result;
         while (res->next()) {
             auto record = std::make_shared<MachineAppsInfoModel>();
@@ -92,7 +93,8 @@ std::vector<application_model_ptr> ModelMgr::get_applications() {
 
         stmt = conn->createStatement();
         res = stmt->executeQuery("SELECT id, source, name, description "
-                                         "FROM APP_LIST");
+                                         "FROM APP_LIST "
+                                         "ORDER BY id DESC");
         std::vector<application_model_ptr> result;
         while (res->next()) {
             auto record = std::make_shared<ApplicationModel>();
@@ -110,21 +112,23 @@ std::vector<application_model_ptr> ModelMgr::get_applications() {
     SQLQUERY_END
 }
 
-app_versions_model_ptr ModelMgr::get_app_versions_by_app_id(int app_id) {
+std::vector<app_versions_model_ptr> ModelMgr::get_app_versions_by_app_id(int app_id) {
     SQLQUERY_BEGIN
 
         pstmt = conn->prepareStatement("SELECT id, app_id, version, registe_time, description "
-                                               "FROM APP_VERSIONS WHERE app_id=?");
+                                               "FROM APP_VERSIONS WHERE app_id=? "
+                                               "ORDER BY id DESC");
         pstmt->setInt(1, app_id);
         res = pstmt->executeQuery();
-        app_versions_model_ptr result = std::make_shared<AppVersionsModel>();
+        std::vector<app_versions_model_ptr> result;
         while (res->next()) {
-            result->set_id(res->getInt("id"));
-            result->set_id(res->getInt("app_id"));
-            result->set_version(res->getString("version"));
-            result->set_registe_time(res->getString("registe_time"));
-            result->set_description(res->getString("description"));
-            break;
+            auto record = std::make_shared<AppVersionsModel>();
+            record->set_id(res->getInt("id"));
+            record->set_app_id(res->getInt("app_id"));
+            record->set_version(res->getString("version"));
+            record->set_registe_time(res->getString("registe_time"));
+            record->set_description(res->getString("description"));
+            result.push_back(record);
         }
 
         SQLQUERY_CLEAR_RESOURCE
