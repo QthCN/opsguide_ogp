@@ -40,7 +40,12 @@ set(CONTROLLER_SOURCE_FILES
         src/service/message.h
         src/controller/base.h
         src/model/model.h
-        src/model/model.cpp)
+        src/model/model.cpp
+        src/controller/scheduler.h
+        src/controller/scheduler.cpp
+        src/controller/utils.cpp
+        src/controller/utils.h
+        src/controller/ma.h)
 add_executable(ogp-controller src/cli/controller.cpp ${CONTROLLER_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-controller ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY} ${LIBMYSQLCPPCONN_LIBRARIES})
 
@@ -61,7 +66,8 @@ set(DOCKER_AGENT_SOURCE_FILES
         src/service/agent.cpp
         src/common/docker_client.h
         src/common/docker_client.cpp
-        src/third/json/json.hpp)
+        src/third/json/json.hpp
+        src/controller/ma.h)
 add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} )
 

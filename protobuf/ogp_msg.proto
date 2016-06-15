@@ -62,6 +62,7 @@ message DockerTargetContainerInfo {
     repeated DockerTargetContainerPort ports = 3;
     repeated DockerTargetVolume volumes = 4;
     repeated DockerTargetDNS dns = 5;
+    optional string extra_cmd = 6;
 }
 
 // 容器应该处于的运行时状态信息
@@ -115,6 +116,9 @@ message ControllerAgentBindApps {
     required string app_version = 2;
     required int32 app_id = 3;
     required int32 uniq_id = 4;
+    // STOP/UNKNOWN/RUNNING/NOT_RUNNING
+    optional string status = 5;
+    optional string runtime_name = 6;
 }
 
 message ControllerAgentInfo {
@@ -133,3 +137,60 @@ message ControllerAgentList {
     repeated ControllerAgentInfo agents = 2;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+message PublishAppCfgPort {
+    required int32 private_port = 1;
+    required int32 public_port = 2;
+    required string type = 3;
+}
+
+message PublishAppCfgVolume {
+    required string docker_volume = 1;
+    required string host_volume = 2;
+}
+
+message PublishAppCfgDNS {
+    required string dns = 1;
+    required string address = 2;
+}
+
+message PublishAppCfg {
+    repeated PublishAppCfgPort ports = 1;
+    repeated PublishAppCfgVolume volumes = 2;
+    repeated PublishAppCfgDNS dns = 3;
+    optional string extra_cmd = 4;
+}
+
+message PublishHints {
+    optional string da_ip = 1;
+}
+
+// 发布应用请求
+message PublishAppReq {
+    required int32 app_id = 1;
+    required string app_version = 2;
+    required string runtime_name = 3;
+    optional PublishAppCfg app_cfg = 4;
+    optional PublishHints hints = 5;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 发布应用响应
+message PublishAppRes {
+    required MsgHeader header = 1;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 下线版本请求
+message RemoveAppVerReq {
+    required int32 uniq_id = 1;
+}
+
+// 下线版本响应
+message RemoveAppVerRes {
+    required MsgHeader header = 1;
+}

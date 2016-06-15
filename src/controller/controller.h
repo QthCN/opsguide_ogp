@@ -6,6 +6,7 @@
 #define OG_CONTROLLER_CONTROLLER_H
 
 #include "controller/base.h"
+#include "controller/scheduler.h"
 #include "service/message.h"
 #include "service/session.h"
 
@@ -24,8 +25,11 @@ private:
     void handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg);
     void handle_ci_add_app(sess_ptr sess, msg_ptr msg);
     std::mutex g_lock;
+    Scheduler scheduler;
 
 };
 

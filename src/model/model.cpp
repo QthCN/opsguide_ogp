@@ -14,6 +14,7 @@
 
 #define SQLQUERY_BEGIN      sql::Connection *conn = nullptr;\
                             conn = get_conn();\
+                            conn->setAutoCommit(0);\
                             sql::Statement *stmt = nullptr;\
                             sql::ResultSet *res = nullptr;\
                             sql::PreparedStatement *pstmt = nullptr;\
@@ -34,9 +35,9 @@
 
 template<typename PTR>
 void delete_ptr(PTR p) {
-    if (p != nullptr) {
-        delete p;
-        p = nullptr;
+    if (*p != nullptr) {
+        delete *p;
+        *p = nullptr;
     }
 }
 
@@ -51,6 +52,7 @@ void ModelMgr::close_conn(sql::Connection *conn) {
     if (conn == nullptr) {
         return;
     }
+    conn->commit();
     conn->close();
     delete conn;
 }
@@ -63,6 +65,7 @@ std::vector<machine_apps_info_model_ptr> ModelMgr::get_machine_apps_info() {
                                          "MACHINE_APP_LIST.ip_address,"
                                          "MACHINE_APP_LIST.app_id AS app_id,"
                                          "MACHINE_APP_LIST.version_id AS version_id,"
+                                         "MACHINE_APP_LIST.runtime_name AS runtime_name,"
                                          "APP_VERSIONS.version,"
                                          "APP_LIST.name AS app_name "
                                          "FROM MACHINE_APP_LIST, APP_VERSIONS, APP_LIST "
@@ -78,7 +81,91 @@ std::vector<machine_apps_info_model_ptr> ModelMgr::get_machine_apps_info() {
             record->set_version_id(res->getInt("version_id"));
             record->set_version(res->getString("version"));
             record->set_name(res->getString("app_name"));
+            record->set_runtime_name(res->getString("runtime_name"));
             result.push_back(record);
+        }
+
+        delete_ptr(&res);
+
+        for (auto &record: result) {
+            auto uniq_id = record->get_machine_app_list_id();
+
+            // cfg_ports
+            pstmt = conn->prepareStatement("SELECT private_port, public_port, type "
+                                                   "FROM PUBLISH_APP_CFG_PORTS "
+                                                   "WHERE uniq_id=?");
+            pstmt->setInt(1, uniq_id);
+            res = pstmt->executeQuery();
+            while (res->next()) {
+                auto cfg_port = std::make_shared<PublishAppCfgPortsModel>();
+                cfg_port->set_uniq_id(uniq_id);
+                cfg_port->set_private_port(res->getInt("private_port"));
+                cfg_port->set_public_port(res->getInt("public_port"));
+                cfg_port->set_type(res->getString("type"));
+                record->get_cfg_ports().push_back(cfg_port);
+            }
+            delete_ptr(&res);
+            delete_ptr(&pstmt);
+
+            // cfg_volumes
+            pstmt = conn->prepareStatement("SELECT docker_volume, host_volume "
+                                                   "FROM PUBLISH_APP_CFG_VOLUMES "
+                                                   "WHERE uniq_id=?");
+            pstmt->setInt(1, uniq_id);
+            res = pstmt->executeQuery();
+            while (res->next()) {
+                auto cfg_volume = std::make_shared<PublishAppCfgVolumesModel>();
+                cfg_volume->set_uniq_id(uniq_id);
+                cfg_volume->set_docker_volume(res->getString("docker_volume"));
+                cfg_volume->set_host_volume(res->getString("host_volume"));
+                record->get_cfg_volumes().push_back(cfg_volume);
+            }
+            delete_ptr(&res);
+            delete_ptr(&pstmt);
+
+            // cfg_dns
+            pstmt = conn->prepareStatement("SELECT dns, address "
+                                                   "FROM PUBLISH_APP_CFG_DNS "
+                                                   "WHERE uniq_id=?");
+            pstmt->setInt(1, uniq_id);
+            res = pstmt->executeQuery();
+            while (res->next()) {
+                auto cfg_dns = std::make_shared<PublishAppCfgDnsModel>();
+                cfg_dns->set_uniq_id(uniq_id);
+                cfg_dns->set_dns(res->getString("dns"));
+                cfg_dns->set_address(res->getString("address"));
+                record->get_cfg_dns().push_back(cfg_dns);
+            }
+            delete_ptr(&res);
+            delete_ptr(&pstmt);
+
+            // cfg_extra_cmd
+            pstmt = conn->prepareStatement("SELECT extra_cmd "
+                                                   "FROM PUBLISH_APP_CFG_EXTRA_CMD "
+                                                   "WHERE uniq_id=?");
+            pstmt->setInt(1, uniq_id);
+            res = pstmt->executeQuery();
+            while (res->next()) {
+                auto cfg_extra_cmd = std::make_shared<PublishAppCfgExtraCmdModel>();
+                cfg_extra_cmd->set_uniq_id(uniq_id);
+                cfg_extra_cmd->set_extra_cmd(res->getString("extra_cmd"));
+                record->set_cfg_extra_cmd(cfg_extra_cmd);
+            }
+            delete_ptr(&res);
+            delete_ptr(&pstmt);
+
+            // hints
+            pstmt = conn->prepareStatement("SELECT item, value "
+                                                   "FROM PUBLISH_APP_HINTS "
+                                                   "WHERE uniq_id=?");
+            pstmt->setInt(1, uniq_id);
+            res = pstmt->executeQuery();
+            while (res->next()) {
+                auto hint = std::make_shared<PublishAppHintsModel>();
+                hint->set_item(res->getString("item"));
+                hint->set_value(res->getString("value"));
+                record->get_hints().push_back(hint);
+            }
         }
 
         SQLQUERY_CLEAR_RESOURCE
@@ -158,29 +245,29 @@ void ModelMgr::add_app(std::string app_name, std::string app_source, std::string
                                      + " and version: " + app_version
                                      + " already exist.");
         } else {
-            delete_ptr(pstmt);
-            delete_ptr(res);
+            delete_ptr(&pstmt);
+            delete_ptr(&res);
             pstmt = conn->prepareStatement("SELECT id FROM APP_LIST WHERE name=? ");
             pstmt->setString(1, app_name);
             res = pstmt->executeQuery();
 
             if (res->next() == false) {
-                delete_ptr(pstmt);
-                delete_ptr(res);
+                delete_ptr(&pstmt);
+                delete_ptr(&res);
                 pstmt = conn->prepareStatement("INSERT INTO APP_LIST(source, name, description) VALUES (?, ?, ?)");
                 pstmt->setString(1, app_source);
                 pstmt->setString(2, app_name);
                 pstmt->setString(3, app_desc);
                 pstmt->execute();
-                delete_ptr(pstmt);
+                delete_ptr(&pstmt);
             }
             pstmt = conn->prepareStatement("SELECT id FROM APP_LIST WHERE name=? ");
             pstmt->setString(1, app_name);
             res = pstmt->executeQuery();
             res->next();
             *app_id = res->getInt("id");
-            delete_ptr(pstmt);
-            delete_ptr(res);
+            delete_ptr(&pstmt);
+            delete_ptr(&res);
 
             pstmt = conn->prepareStatement("INSERT INTO APP_VERSIONS(app_id, version, registe_time, description) "
                                                    "VALUES (?, ?, NOW(), ?)");
@@ -188,7 +275,7 @@ void ModelMgr::add_app(std::string app_name, std::string app_source, std::string
             pstmt->setString(2, app_version);
             pstmt->setString(3, app_version_desc);
             pstmt->execute();
-            delete_ptr(pstmt);
+            delete_ptr(&pstmt);
 
             pstmt = conn->prepareStatement("SELECT id, registe_time FROM APP_VERSIONS "
                                                    "WHERE app_id=? AND version=?");
@@ -202,6 +289,133 @@ void ModelMgr::add_app(std::string app_name, std::string app_source, std::string
             stmt->execute("UNLOCK TABLES");
             SQLQUERY_CLEAR_RESOURCE
         }
+
+    SQLQUERY_END
+}
+
+void ModelMgr::bind_app(std::string ip_address, int app_id, int version_id, std::string runtime_name,
+                        std::vector<publish_app_cfg_ports_model_ptr> cfg_ports,
+                        std::vector<publish_app_cfg_volumes_model_ptr> cfg_volumes,
+                        std::vector<publish_app_cfg_dns_model_ptr> cfg_dns,
+                        publish_app_cfg_extra_cmd_model_ptr cfg_extra_cmd,
+                        std::vector<publish_app_hints_model_ptr> hints, int *uniq_id) {
+    SQLQUERY_BEGIN
+
+        stmt = conn->createStatement();
+        stmt->execute("LOCK TABLES MACHINE_APP_LIST WRITE, PUBLISH_APP_HINTS WRITE, "
+                              "PUBLISH_APP_CFG_PORTS WRITE, "
+                              "PUBLISH_APP_CFG_VOLUMES WRITE, "
+                              "PUBLISH_APP_CFG_DNS WRITE, "
+                              "PUBLISH_APP_CFG_EXTRA_CMD WRITE");
+
+        pstmt = conn->prepareStatement("INSERT INTO MACHINE_APP_LIST(ip_address, app_id, version_id, runtime_name) "
+                                               "VALUES (?, ?, ?, ?)");
+        pstmt->setString(1, ip_address);
+        pstmt->setInt(2, app_id);
+        pstmt->setInt(3, version_id);
+        pstmt->setString(4, runtime_name);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+        pstmt = conn->prepareStatement("SELECT LAST_INSERT_ID() AS id");
+        res = pstmt->executeQuery();
+        res->next();
+        *uniq_id = res->getInt("id");
+        delete_ptr(&pstmt);
+        delete_ptr(&res);
+
+        // cfg_ports
+        for (auto &cfg_port: cfg_ports) {
+            pstmt = conn->prepareStatement("INSERT INTO PUBLISH_APP_CFG_PORTS(uniq_id, private_port, public_port, "
+                                                   "type) VALUES (?, ?, ?, ?)");
+            pstmt->setInt(1, *uniq_id);
+            pstmt->setInt(2, cfg_port->get_private_port());
+            pstmt->setInt(3, cfg_port->get_public_port());
+            pstmt->setString(4, cfg_port->get_type());
+            pstmt->execute();
+            delete_ptr(&pstmt);
+        }
+
+        // cfg_volumes
+        for (auto &cfg_volume: cfg_volumes) {
+            pstmt = conn->prepareStatement("INSERT INTO PUBLISH_APP_CFG_VOLUMES(uniq_id, docker_volume, host_volume) "
+                                                   "VALUES (?, ?, ?)");
+            pstmt->setInt(1, *uniq_id);
+            pstmt->setString(2, cfg_volume->get_docker_volume());
+            pstmt->setString(3, cfg_volume->get_host_volume());
+            pstmt->execute();
+            delete_ptr(&pstmt);
+        }
+
+        // cfg_dns
+        for (auto &cfg_dns_: cfg_dns) {
+            pstmt = conn->prepareStatement("INSERT INTO PUBLISH_APP_CFG_DNS(uniq_id, dns, address) "
+                                                   "VALUES (?, ?, ?)");
+            pstmt->setInt(1, *uniq_id);
+            pstmt->setString(2, cfg_dns_->get_dns());
+            pstmt->setString(3, cfg_dns_->get_address());
+            pstmt->execute();
+            delete_ptr(&pstmt);
+        }
+
+        // cfg_extra_cmd
+        if (cfg_extra_cmd != nullptr) {
+            pstmt = conn->prepareStatement("INSERT INTO PUBLISH_APP_CFG_EXTRA_CMD(uniq_id, extra_cmd) "
+                                                   "VALUES(?, ?)");
+            pstmt->setInt(1, *uniq_id);
+            pstmt->setString(2, cfg_extra_cmd->get_extra_cmd());
+            pstmt->execute();
+            delete_ptr(&pstmt);
+        }
+
+        // hints
+        for (auto &hint: hints) {
+            pstmt = conn->prepareStatement("INSERT INTO PUBLISH_APP_HINTS(uniq_id, item, value) "
+                                                   "VALUES(?, ?, ?)");
+            pstmt->setInt(1, *uniq_id);
+            pstmt->setString(2, hint->get_item());
+            pstmt->setString(3, hint->get_value());
+            pstmt->execute();
+            delete_ptr(&pstmt);
+        }
+
+        stmt->execute("UNLOCK TABLES");
+        SQLQUERY_CLEAR_RESOURCE
+
+    SQLQUERY_END
+}
+
+void ModelMgr::remove_version(int uniq_id) {
+    SQLQUERY_BEGIN
+
+        pstmt = conn->prepareStatement("DELETE FROM MACHINE_APP_LIST WHERE id=?");
+        pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+
+        pstmt = conn->prepareStatement("DELETE FROM PUBLISH_APP_CFG_DNS WHERE uniq_id=?");
+        pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+
+        pstmt = conn->prepareStatement("DELETE FROM PUBLISH_APP_CFG_EXTRA_CMD WHERE uniq_id=?");
+        pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+
+        pstmt = conn->prepareStatement("DELETE FROM PUBLISH_APP_CFG_PORTS WHERE uniq_id=?");
+        pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+
+        pstmt = conn->prepareStatement("DELETE FROM PUBLISH_APP_CFG_VOLUMES WHERE uniq_id=?");
+        pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+
+        pstmt = conn->prepareStatement("DELETE FROM PUBLISH_APP_HINTS WHERE uniq_id=?");
+        pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        SQLQUERY_CLEAR_RESOURCE
 
     SQLQUERY_END
 }

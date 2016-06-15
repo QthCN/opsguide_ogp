@@ -29,8 +29,8 @@ json DockerClient::list_containers(int all) {
     return result;
 }
 
-json DockerClient::create_container(json parameters) {
-    auto subpath = "/containers/create";
+json DockerClient::create_container(json parameters, std::string name) {
+    std::string subpath = "/containers/create?name=/" + name;
     auto path = "http://" + host + subpath;
     std::string request_body = parameters.dump(4);
     RestClient::Response r = RestClient::post(path, "application/json", request_body);
@@ -40,6 +40,19 @@ json DockerClient::create_container(json parameters) {
     }
     json result = json::parse(r.body);
     return result;
+}
+
+std::string DockerClient::get_container_id_by_name(std::string name) {
+    name = "/" + name;
+    auto containers_info = list_containers(1);
+    for (auto &c: containers_info) {
+        for (auto it=c["Names"].begin(); it!=c["Names"].end(); it++) {
+            if (it.value() == name) {
+                return c["Id"];
+            }
+        }
+    }
+    return "";
 }
 
 void DockerClient::start_container(std::string container_id) {

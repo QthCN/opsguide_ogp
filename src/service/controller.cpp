@@ -112,14 +112,11 @@ ControllerService::ControllerService(unsigned int thread_num, const std::string 
 void ControllerService::run() {
     LOG_INFO("ControllerService run. Thread num: " << thread_num
              << " Address: " << listen_address << " Port: " << listen_port)
-    std::vector<std::thread> cs_threads;
     for (unsigned int i=0; i<thread_num; i++) {
         std::thread t([this](){this->io_service.run();});
-        cs_threads.push_back(std::move(t));
+        controller->add_thread(std::move(t));
     }
-    for (auto t = cs_threads.begin(); t!=cs_threads.end();t++) {
-        t->join();
-    }
+    controller->wait();
 }
 
 void ControllerService::start_accept() {
