@@ -6,6 +6,7 @@ include_directories("./src")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
 
 find_package(Boost 1.60.0 COMPONENTS regex system date_time program_options filesystem REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})

@@ -44,7 +44,7 @@ private:
                                    std::ostringstream().flush() << message \
                                    ).str(),\
                                    __FUNCTION__,\
-                                   __FILE__,\
+                                   __FILENAME__,\
                                    __LINE__, \
                                    Level::Debug);
 #define LOG_INFO(message) logger(\
@@ -52,7 +52,7 @@ private:
                                    std::ostringstream().flush() << message \
                                    ).str(),\
                                    __FUNCTION__,\
-                                   __FILE__,\
+                                   __FILENAME__,\
                                    __LINE__, \
                                    Level::Info);
 #define LOG_WARN(message) logger(\
@@ -60,7 +60,7 @@ private:
                                    std::ostringstream().flush() << message \
                                    ).str(),\
                                    __FUNCTION__,\
-                                   __FILE__,\
+                                   __FILENAME__,\
                                    __LINE__, \
                                    Level::Warn);
 #define LOG_ERROR(message) logger(\
@@ -68,7 +68,7 @@ private:
                                    std::ostringstream().flush() << message \
                                    ).str(),\
                                    __FUNCTION__,\
-                                   __FILE__,\
+                                   __FILENAME__,\
                                    __LINE__, \
                                    Level::Error);
 
