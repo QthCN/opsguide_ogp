@@ -80,6 +80,7 @@ private:
     std::mutex actions_queue_lock;
     void start_container(container_ptr container);
     void stop_and_remove_container(container_ptr container);
+    void collect_docker_rt_and_sync();
 };
 
 #endif //OGP_CONTROLLER_DOCKER_AGENT_H

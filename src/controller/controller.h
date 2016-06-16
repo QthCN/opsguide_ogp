@@ -27,6 +27,7 @@ private:
     void handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg);
     void handle_ci_add_app(sess_ptr sess, msg_ptr msg);
     std::mutex g_lock;
     Scheduler scheduler;

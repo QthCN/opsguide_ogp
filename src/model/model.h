@@ -437,6 +437,7 @@ public:
                   std::vector<publish_app_hints_model_ptr> hints,
                   int*uniq_id);
     void remove_version(int uniq_id);
+    void update_version(int uniq_id, int new_version_id, std::string new_runtime_name);
 
 private:
     std::string mysql_address;

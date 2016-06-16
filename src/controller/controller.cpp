@@ -502,6 +502,10 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::PO_PORTAL_REMOVE_APPVER_REQ:
             handle_po_remove_appver_msg(sess, msg);
             break;
+            // portal发来的升级version的请求
+        case MsgType::PO_PORTAL_UPGRADE_APPVER_REQ:
+            handle_po_upgrade_appver_msg(sess, msg);
+            break;
 
             // cli发来的创建app请求
         case MsgType::CI_CLI_ADD_APP_REQ:
@@ -510,6 +514,76 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void Controller::handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg) {
+    auto model_mgr = ModelMgr();
+    ogp_msg::UpgradeAppVerReq upgrade_appver_req;
+    upgrade_appver_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+    ogp_msg::UpgradeAppVerRes upgrade_appver_res;
+    auto header = upgrade_appver_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    auto new_version = upgrade_appver_req.new_version();
+    auto old_uniq_id = upgrade_appver_req.old_ver_uniq_id();
+    auto new_runtime_name = upgrade_appver_req.runtime_name();
+
+    // 获取相关的内存对象
+    auto agents_ = agents.get_agents();
+    std::shared_ptr<DockerAgent> target_agent = nullptr;
+    machine_application_ptr old_app = nullptr;
+    for (auto &agent: agents_) {
+        if (agent->get_agent_type() == DA_NAME) {
+            auto da = std::static_pointer_cast<DockerAgent>(agent);
+            auto app = da->get_application(old_uniq_id);
+            if (app != nullptr) {
+                old_app = app;
+                target_agent = da;
+                break;
+            }
+        }
+    }
+
+    // 检查新的版本是否存在,另外判断新的版本和老的版本是否一致
+    if (old_app == nullptr || target_agent == nullptr) {
+        LOG_WARN("no record exist with uniq_id: " << std::to_string(old_uniq_id))
+        rc = 1;
+        ret_msg = ("no record exist with uniq_id: " + std::to_string(old_uniq_id));
+    } else if (new_version == old_app->get_version()) {
+        LOG_WARN("same version, no action taken.")
+        rc = 2;
+        ret_msg = "same version, no action taken.";
+    } else if (new_runtime_name == "") {
+        LOG_ERROR("runtime_name is empty.")
+        rc = 3;
+        ret_msg = "runtime_name is empty.";
+    } else {
+        // 进行版本更新,首先更新DB,然后更新内存,接着向da发送消息
+        try {
+            model_mgr.update_version(old_uniq_id, old_app->get_version_id(), new_runtime_name);
+        } catch (sql::SQLException &e) {
+            rc = 4;
+            ret_msg = e.what();
+        }
+
+        // DB持久化成功,更新内存结构
+        if (rc == 0) {
+            old_app->set_version(new_version);
+            old_app->set_version_id(old_app->get_version_id());
+            // todo(tianhuan): runtime_name是我们判断一个应用的运行时信息是否改变的唯一要素,因此需要最后再更新,
+            // 但status可能会由于竞争存在一段时间的错误状态,不过这种概率非常小
+            old_app->set_runtime_name(new_runtime_name);
+            old_app->set_status(MAStatus::NOT_RUNNING);
+            // 通知da
+            send_simple_msg(target_agent->get_sess(), MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_REQ);
+        }
+    }
+
+
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, upgrade_appver_res, MsgType::CT_PORTAL_UPGRADE_APPVER_RES);
 }
 
 void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {

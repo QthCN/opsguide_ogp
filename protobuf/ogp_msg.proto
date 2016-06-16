@@ -194,3 +194,17 @@ message RemoveAppVerReq {
 message RemoveAppVerRes {
     required MsgHeader header = 1;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 版本升级请求
+message UpgradeAppVerReq {
+    required int32 old_ver_uniq_id = 1;
+    required string new_version = 2;
+    required string runtime_name = 3;
+}
+
+// 版本升级响应
+message UpgradeAppVerRes {
+    required MsgHeader header = 1;
+}

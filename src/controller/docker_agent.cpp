@@ -72,8 +72,10 @@ void DockerAgent::send_heartbeat() {
 void DockerAgent::docker_worker() {
     unsigned int period = 1;
     while (true) {
+        bool do_sync = false;
         try {
             while (!actions_queue_empty()) {
+                do_sync = true;
                 daaction_ptr action = nullptr;
                 action = get_action();
                 if (action == nullptr) {
@@ -90,6 +92,11 @@ void DockerAgent::docker_worker() {
                         stop_and_remove_container(action->get_container());
                         break;
                 }
+                // 每次操作之间都休息一下,防止docker进程出问题,同时也能减少controller的压力
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            if (do_sync) {
+                collect_docker_rt_and_sync();
             }
         } catch (...) {
             LOG_ERROR("docker_worker work error.")
@@ -251,23 +258,27 @@ ogp_msg::DockerRuntimeInfo DockerAgent::get_docker_runtime_info_msg(std::string 
     return docker_runtime_info;
 }
 
+void DockerAgent::collect_docker_rt_and_sync() {
+    try {
+        auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
+        // 获取docker的运行时信息,包括系统资源情况及容器信息
+        ogp_msg::DockerRuntimeInfo docker_runtime_info;
+        docker_runtime_info = get_docker_runtime_info_msg(docker_host);
+
+        // 发送同步信息给controller
+        send_msg(agent_lock, controller_sess, docker_runtime_info, MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ);
+
+    } catch (std::runtime_error &e) {
+        LOG_ERROR("" << e.what())
+    }
+}
+
 void DockerAgent::sync() {
     auto period = static_cast<unsigned int>(config_mgr.get_item("agent_sync_period")->get_int());
     auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
 
     while (true) {
-        try {
-            // 获取docker的运行时信息,包括系统资源情况及容器信息
-            ogp_msg::DockerRuntimeInfo docker_runtime_info;
-            docker_runtime_info = get_docker_runtime_info_msg(docker_host);
-
-            // 发送同步信息给controller
-            send_msg(agent_lock, controller_sess, docker_runtime_info, MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ);
-
-        } catch (std::runtime_error &e) {
-            LOG_ERROR("" << e.what())
-        }
-
+        collect_docker_rt_and_sync();
         std::this_thread::sleep_for(std::chrono::seconds(period));
     }
 }

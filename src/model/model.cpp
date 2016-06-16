@@ -42,10 +42,16 @@ void delete_ptr(PTR p) {
 }
 
 sql::Connection *ModelMgr::get_conn() {
-    auto driver = get_driver_instance();
-    auto conn = driver->connect(mysql_address, mysql_user, mysql_password);
-    conn->setSchema(mysql_schema);
-    return conn;
+    try {
+        auto driver = get_driver_instance();
+        auto conn = driver->connect(mysql_address, mysql_user, mysql_password);
+        conn->setSchema(mysql_schema);
+        return conn;
+    } catch (sql::SQLException &e) {
+        LOG_ERROR("" << e.what())
+        throw e;
+    }
+
 }
 
 void ModelMgr::close_conn(sql::Connection *conn) {
@@ -414,6 +420,20 @@ void ModelMgr::remove_version(int uniq_id) {
 
         pstmt = conn->prepareStatement("DELETE FROM PUBLISH_APP_HINTS WHERE uniq_id=?");
         pstmt->setInt(1, uniq_id);
+        pstmt->execute();
+        SQLQUERY_CLEAR_RESOURCE
+
+    SQLQUERY_END
+}
+
+void ModelMgr::update_version(int uniq_id, int new_version_id, std::string new_runtime_name) {
+    SQLQUERY_BEGIN
+
+        pstmt = conn->prepareStatement("UPDATE MACHINE_APP_LIST SET version_id=?, "
+                                               "runtime_name=? WHERE id=?");
+        pstmt->setInt(1, new_version_id);
+        pstmt->setString(2, new_runtime_name);
+        pstmt->setInt(3, uniq_id);
         pstmt->execute();
         SQLQUERY_CLEAR_RESOURCE
 

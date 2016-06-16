@@ -19,6 +19,7 @@ enum class MsgType: unsigned int {
     CT_PORTAL_GET_AGENTS_RES = 5,
     CT_PORTAL_PUBLISH_APP_RES = 6,
     CT_PORTAL_REMOVE_APPVER_RES = 7,
+    CT_PORTAL_UPGRADE_APPVER_RES = 8,
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
@@ -33,6 +34,7 @@ enum class MsgType: unsigned int {
     PO_PORTAL_GET_AGENTS_REQ = 9001,
     PO_PORTAL_PUBLISH_APP_REQ = 9002,
     PO_PORTAL_REMOVE_APPVER_REQ = 9003,
+    PO_PORTAL_UPGRADE_APPVER_REQ = 9004,
 
     // CLI
     CI_CLI_ADD_APP_REQ = 12000,
