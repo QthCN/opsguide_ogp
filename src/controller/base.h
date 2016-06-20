@@ -13,6 +13,7 @@
 
 class BaseController {
 public:
+    virtual~BaseController() {};
     // 执行初始化
     virtual void init() = 0;
     // 关联session和controller内部数据结构,如果有问题需要抛出异常

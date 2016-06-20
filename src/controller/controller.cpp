@@ -9,438 +9,16 @@
 #include <vector>
 
 #include "common/log.h"
+#include "controller/agents.h"
+#include "controller/applications.h"
 #include "controller/ma.h"
 #include "controller/utils.h"
 #include "model/model.h"
 #include "ogp_msg.pb.h"
 
-// agent type
-#define DA_NAME "DOCKER_AGENT"
-#define NX_NAME "NGINX_AGENT"
-
-class AppVersion {
-public:
-    AppVersion(int id, int app_id, const std::string &version, const std::string &registe_time,
-               const std::string &description) : id(id), app_id(app_id), version(version), registe_time(registe_time),
-                                                 description(description) { }
-
-    int get_id() { return id;}
-    int get_app_id() {return app_id;}
-    std::string get_version() {return version;}
-    std::string get_registe_time() {return registe_time;}
-    std::string get_description() {return description;}
-
-private:
-    int id;
-    int app_id;
-    std::string version;
-    std::string registe_time;
-    std::string description;
-};
-typedef std::shared_ptr<AppVersion> app_version_ptr;
-
-class Application {
-public:
-
-    Application(int id, const std::string &source,
-                const std::string &name, const std::string &description) : id(id),
-                                                                           source(source),
-                                                                           name(name),
-                                                                           description(description) { }
-    int get_id() {return id;}
-    std::string get_source() {return source;}
-    std::string get_name() {return name;}
-    std::string get_description() {return description;}
-    void add_version(app_version_ptr v) {
-        versions_lock.lock();
-        versions.push_back(v);
-        versions_lock.unlock();
-    }
-    std::vector<app_version_ptr> get_versions() {return versions;}
-    app_version_ptr get_version(std::string version) {
-        app_version_ptr ver = nullptr;
-        versions_lock.lock();
-        for (auto v: versions) {
-            if (v->get_version() == version) {
-                ver = v;
-                break;
-            }
-        }
-        versions_lock.unlock();
-        return ver;
-    }
-
-private:
-    int id;
-    std::string source;
-    std::string name;
-    std::string description;
-    std::vector<app_version_ptr> versions;
-    std::mutex versions_lock;
-};
-typedef std::shared_ptr<Application> application_ptr;
-
-class Applications {
-public:
-    void add_application(application_ptr a) {
-        applications_lock.lock();
-        applications.push_back(a);
-        applications_lock.unlock();
-    }
-
-    application_ptr get_application(int app_id) {
-        application_ptr a = nullptr;
-        applications_lock.lock();
-        for (auto app: applications) {
-            if (app->get_id() == app_id) {
-                a = app;
-                break;
-            }
-        }
-        applications_lock.unlock();
-        return a;
-    }
-
-    application_ptr get_application(std::string app_name) {
-        application_ptr a = nullptr;
-        applications_lock.lock();
-        for (auto app: applications) {
-            if (app->get_name() == app_name) {
-                a = app;
-                break;
-            }
-        }
-        applications_lock.unlock();
-        return a;
-    }
-    std::vector<application_ptr> get_applications() {return applications;}
-private:
-    std::vector<application_ptr> applications;
-    std::mutex applications_lock;
-};
-
-Applications applications;
-
-class Agent {
-public:
-    Agent(std::string agent_type_): sess(nullptr), agent_type(agent_type_),
-                                    last_sync_db_time(std::time(0)),
-                                    last_sync_time(std::time(0)),
-                                    last_heartbeat_time(std::time(0)) { }
-    void set_sess(sess_ptr sess_) {
-        agent_lock.lock();
-        sess = sess_;
-        agent_lock.unlock();
-    }
-    sess_ptr get_sess() {return sess;}
-    std::string get_agent_type() {return agent_type;}
-    bool has_sess() {return sess != nullptr;}
-    std::time_t get_last_sync_db_time() {return last_sync_db_time;}
-    void set_last_sync_db_time(std::time_t t) {last_sync_db_time = t;}
-    std::time_t get_last_sync_time() {return last_sync_time;}
-    void set_last_sync_time(std::time_t t) {last_sync_time = t;}
-    std::time_t get_last_heartbeat_time() {return last_heartbeat_time;}
-    void set_last_heartbeat_time(std::time_t t) {last_heartbeat_time = t;}
-    std::string get_machine_ip() {return machine_ip;}
-    void set_machine_ip(std::string machine_ip_) {machine_ip = machine_ip_;}
-    std::mutex &get_agent_lock() {return agent_lock;}
-
-private:
-    // Agent关联的session
-    sess_ptr sess;
-    // Agent类型
-    std::string agent_type;
-    // 最近一次从DB同步该Agent的时刻
-    std::time_t last_sync_db_time;
-    // 最近一次收到心跳包的时刻
-    std::time_t last_heartbeat_time;
-    // 最近一次运行时信息同步的时刻
-    std::time_t last_sync_time;
-    // Agent所在主机IP
-    std::string machine_ip;
-    // Agent操作的并发锁
-    std::mutex agent_lock;
-};
-typedef std::shared_ptr<Agent> agent_ptr;
-
-class DockerAgent: public Agent {
-public:
-    DockerAgent(): Agent(DA_NAME) {
-
-    }
-
-    machine_application_ptr get_application(int id) {
-        applications_lock.lock();
-        for (auto a :applications) {
-            if (a->get_uniq_id() == id) {
-                applications_lock.unlock();
-                return a;
-            }
-        }
-        applications_lock.unlock();
-        return nullptr;
-    }
-
-    void add_application(machine_application_ptr app) {
-        applications_lock.lock();
-        for (auto a :applications) {
-            if (a->get_uniq_id() == app->get_uniq_id()) {
-                applications_lock.unlock();
-                throw std::runtime_error("app already exist.");
-            }
-        }
-        applications.push_back(app);
-        applications_lock.unlock();
-    }
-
-    void remove_application(int uniq_id) {
-        LOG_INFO("remove_application")
-        applications_lock.lock();
-        for (auto it=applications.begin(); it!=applications.end(); it++) {
-            if ((*it)->get_uniq_id() == uniq_id) {
-                applications.erase(it);
-                break;
-            }
-        }
-        applications_lock.unlock();
-    }
-
-    std::mutex &get_applications_lock() {return applications_lock;}
-
-    std::vector<machine_application_ptr> get_applications() {return applications;}
-
-private:
-    std::vector<machine_application_ptr> applications;
-    std::mutex applications_lock;
-};
-
-class NginxAgent: public Agent {
-public:
-    NginxAgent(): Agent(NX_NAME) {}
-};
-
-class Agents {
-public:
-    Agents() {
-    }
-
-    std::string get_key(agent_ptr agent) {
-        return agent->get_machine_ip() + ":" + agent->get_agent_type();
-    }
-
-    std::string get_key(std::string address, std::string agent_type) {
-        return address + ":" + agent_type;
-    }
-
-    agent_ptr get_agent_by_key(std::string key) {
-        agents_map_lock.lock();
-        if (agents_map.find(key) != agents_map.end()) {
-            auto agent = agents_map[key];
-            agents_map_lock.unlock();
-            return agent;
-        } else {
-            agents_map_lock.unlock();
-            return nullptr;
-        }
-    }
-
-    agent_ptr get_agent_by_sess(sess_ptr sess) {
-        agents_map_lock.lock();
-        for (auto it=agents_map.begin(); it!=agents_map.end(); it++) {
-            auto agent_sess = it->second->get_sess();
-            if (agent_sess == nullptr) continue;
-            if (agent_sess->get_address() == sess->get_address() && agent_sess->get_port() == sess->get_port()) {
-                agents_map_lock.unlock();
-                return it->second;
-            }
-        }
-        agents_map_lock.unlock();
-        return nullptr;
-    }
-
-    agent_ptr get_agent_by_sess(sess_ptr sess, std::string agent_type) {
-        agents_map_lock.lock();
-        for (auto it=agents_map.begin(); it!=agents_map.end(); it++) {
-            if (it->second->get_machine_ip() == sess->get_address() && it->second->get_agent_type() == agent_type) {
-                agents_map_lock.unlock();
-                return it->second;
-            }
-        }
-        agents_map_lock.unlock();
-        return nullptr;
-    }
-
-    void add_agent(std::string key, agent_ptr agent) {
-        agents_map_lock.lock();
-        if (agents_map.find(key) != agents_map.end()) {
-            agents_map_lock.unlock();
-            throw std::runtime_error("agent already exist.");
-        } else {
-            agents_map[key] = agent;
-            agents_map_lock.unlock();
-        }
-        LOG_INFO("Current agents size after add_agent: " << agents_map.size())
-    }
-
-
-    std::vector<agent_ptr> get_agents() {
-        std::vector<agent_ptr> agents;
-        agents_map_lock.lock();
-        for (auto it=agents_map.begin(); it!=agents_map.end(); it++) {
-            agents.push_back(it->second);
-        }
-        agents_map_lock.unlock();
-        return agents;
-    };
-
-    void dump_status() {
-        auto agents = get_agents();
-        LOG_INFO("Agent size: " << std::to_string(agents.size()))
-        LOG_INFO("")
-        for (auto &agent: agents) {
-            auto agent_type = agent->get_agent_type();
-            if (agent_type == DA_NAME) {
-                LOG_INFO("DA")
-                LOG_INFO("IP: " << agent->get_machine_ip())
-                LOG_INFO("Has SESS: " << std::to_string(agent->has_sess()))
-                auto da = std::static_pointer_cast<DockerAgent>(agent);
-                da->get_applications_lock().lock();
-                auto apps = da->get_applications();
-                for (auto app: apps) {
-                    std::string app_status = "";
-                    switch(app->get_status()) {
-                        case MAStatus::STOP:
-                            app_status = "stop";
-                            break;
-                        case MAStatus::RUNNING:
-                            app_status = "running";
-                            break;
-                        case MAStatus::UNKNOWN:
-                            app_status = "unknown";
-                            break;
-                        case MAStatus::NOT_RUNNING:
-                            app_status = "not running";
-                            break;
-                    }
-                    LOG_INFO("APP, NAME: " << app->get_app_name() << " VERSION: " << app->get_version()
-                             << " RUNTIME_NAME: " << app->get_runtime_name() << " STATUS: " << app_status)
-                }
-                da->get_applications_lock().unlock();
-            }
-            LOG_INFO("---------")
-        }
-    }
-
-    void init() {
-        auto model_mgr = ModelMgr();
-
-        LOG_INFO("Initialize applications from DB.")
-        auto applications_info = model_mgr.get_applications();
-        for (auto application: applications_info) {
-            auto a = std::make_shared<Application>(
-                    application->get_id(),
-                    application->get_source(),
-                    application->get_name(),
-                    application->get_description()
-            );
-            auto vs = model_mgr.get_app_versions_by_app_id(a->get_id());
-            for (auto &v: vs) {
-                auto ver = std::make_shared<AppVersion>(
-                        v->get_id(),
-                        v->get_app_id(),
-                        v->get_version(),
-                        v->get_registe_time(),
-                        v->get_description()
-                );
-                a->add_version(ver);
-            }
-            applications.add_application(a);
-        }
-
-        LOG_INFO("Initialize agents from DB.")
-        auto machine_apps_info = model_mgr.get_machine_apps_info();
-        for (auto machine_app_info: machine_apps_info) {
-            auto key = get_key(machine_app_info->get_ip_address(), DA_NAME);
-            auto agent = get_agent_by_key(key);
-            if (agent == nullptr) {
-                LOG_INFO("Add docker agent from DB, agent key: " << key)
-                agent = std::make_shared<DockerAgent>();
-                agent->set_machine_ip(machine_app_info->get_ip_address());
-                add_agent(key, agent);
-            }
-            auto docker_agent = std::static_pointer_cast<DockerAgent>(agent);
-            auto app = std::make_shared<MachineApplication>();
-            app->set_uniq_id(machine_app_info->get_machine_app_list_id());
-            app->set_version_id(machine_app_info->get_version_id());
-            app->set_version(machine_app_info->get_version());
-            app->set_app_id(machine_app_info->get_app_id());
-            app->set_app_name(machine_app_info->get_name());
-            app->set_machine_ip_address(machine_app_info->get_ip_address());
-            app->set_runtime_name(machine_app_info->get_runtime_name());
-
-            // cfg_ports
-            for (auto &dcp: machine_app_info->get_cfg_ports()) {
-                auto cfg_port = std::make_shared<MACfgPort>();
-                cfg_port->private_port = dcp->get_private_port();
-                cfg_port->public_port = dcp->get_public_port();
-                cfg_port->type = dcp->get_type();
-                app->add_cfg_port(cfg_port);
-            }
-
-            // cfg_volumes
-            for (auto &dcv: machine_app_info->get_cfg_volumes()) {
-                auto cfg_volume = std::make_shared<MACfgVolume>();
-                cfg_volume->docker_volume = dcv->get_docker_volume();
-                cfg_volume->host_volume = dcv->get_host_volume();
-                app->add_cfg_volume(cfg_volume);
-            }
-
-            // cfg_dns
-            for (auto &dcd: machine_app_info->get_cfg_dns()) {
-                auto cfg_dns = std::make_shared<MACfgDns>();
-                cfg_dns->address = dcd->get_address();
-                cfg_dns->dns = dcd->get_dns();
-                app->add_cfg_dns(cfg_dns);
-            }
-
-            // cfg_extra_cmd
-            auto cfg_extra_cmd = std::make_shared<MACfgExtraCmd>();
-            if (machine_app_info->get_cfg_extra_cmd() != nullptr) {
-                cfg_extra_cmd->extra_cmd = machine_app_info->get_cfg_extra_cmd()->get_extra_cmd();
-            }
-            app->set_cfg_extra_cmd(cfg_extra_cmd);
-
-            // hints
-            for (auto &dh: machine_app_info->get_hints()) {
-                auto hint = std::make_shared<MAHint>();
-                hint->item = dh->get_item();
-                hint->value = dh->get_value();
-                app->add_hint(hint);
-            }
-
-            try {
-                LOG_INFO("Add app, app unique id: " << std::to_string(app->get_uniq_id())
-                         << " name: " << app->get_app_name() << " version: " << app->get_version())
-                docker_agent->add_application(app);
-            } catch (std::runtime_error &e) {
-                LOG_ERROR("" << e.what())
-                throw std::runtime_error("BUG!!!");
-            }
-        }
-
-    }
-
-private:
-    std::map<std::string, agent_ptr> agents_map;
-    std::mutex agents_map_lock;
-
-};
-
-Agents agents;
-
 void Controller::init() {
     LOG_INFO("Initialize agents.")
-    agents.init();
+    agents->init(model_mgr, applications);
     LOG_INFO("Initialize scheduler.")
     scheduler.init();
     LOG_INFO("Controller initialization finished.")
@@ -452,7 +30,7 @@ void Controller::associate_sess(sess_ptr sess) {
 
 void Controller::invalid_sess(sess_ptr sess) {
     g_lock.lock();
-    auto agent = agents.get_agent_by_sess(sess);
+    auto agent = agents->get_agent_by_sess(sess);
     if (agent == nullptr) {
         g_lock.unlock();
         return;
@@ -471,7 +49,7 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
             // docker agent发来的心跳请求
         case MsgType::DA_DOCKER_HEARTBEAT_REQ:
             // 更新心跳同步时间
-            agent = agents.get_agent_by_sess(sess, DA_NAME);
+            agent = agents->get_agent_by_sess(sess, DA_NAME);
             agent->set_last_heartbeat_time(std::time(0));
             sess->send_msg(
                     std::make_shared<Message>(
@@ -517,7 +95,6 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
 }
 
 void Controller::handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg) {
-    auto model_mgr = ModelMgr();
     ogp_msg::UpgradeAppVerReq upgrade_appver_req;
     upgrade_appver_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
     ogp_msg::UpgradeAppVerRes upgrade_appver_res;
@@ -530,7 +107,7 @@ void Controller::handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg) {
     auto new_runtime_name = upgrade_appver_req.runtime_name();
 
     // 获取相关的内存对象
-    auto agents_ = agents.get_agents();
+    auto agents_ = agents->get_agents();
     std::shared_ptr<DockerAgent> target_agent = nullptr;
     machine_application_ptr old_app = nullptr;
     for (auto &agent: agents_) {
@@ -561,7 +138,7 @@ void Controller::handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg) {
     } else {
         // 进行版本更新,首先更新DB,然后更新内存,接着向da发送消息
         try {
-            model_mgr.update_version(old_uniq_id, old_app->get_version_id(), new_runtime_name);
+            model_mgr->update_version(old_uniq_id, old_app->get_version_id(), new_runtime_name);
         } catch (sql::SQLException &e) {
             rc = 4;
             ret_msg = e.what();
@@ -587,7 +164,6 @@ void Controller::handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg) {
 }
 
 void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {
-    auto model_mgr = ModelMgr();
     ogp_msg::RemoveAppVerReq remove_appver_req;
     remove_appver_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
     ogp_msg::RemoveAppVerRes remove_appver_res;
@@ -596,7 +172,7 @@ void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {
     std::string ret_msg = "";
 
     try {
-        model_mgr.remove_version(remove_appver_req.uniq_id());
+        model_mgr->remove_version(remove_appver_req.uniq_id());
     } catch (sql::SQLException &e) {
         rc = 1;
         ret_msg = e.what();
@@ -604,14 +180,16 @@ void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {
 
     // DB层面已经版本下线完成
     if (rc == 0) {
-        auto agents_ = agents.get_agents();
+        auto agents_ = agents->get_agents();
         for (auto &agent: agents_) {
             if (agent->get_agent_type() == DA_NAME) {
                 auto da = std::static_pointer_cast<DockerAgent>(agent);
-                da->remove_application(remove_appver_req.uniq_id());
-                // 通知da
-                send_simple_msg(da->get_sess(), MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_REQ);
-                break;
+                if (da->get_application(remove_appver_req.uniq_id())) {
+                    da->remove_application(remove_appver_req.uniq_id());
+                    // 通知da
+                    send_simple_msg(da->get_sess(), MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_REQ);
+                    break;
+                }
             }
         }
     }
@@ -622,7 +200,6 @@ void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {
 }
 
 void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
-    auto model_mgr = ModelMgr();
     ogp_msg::PublishAppReq publish_app_req;
     publish_app_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
     ogp_msg::PublishAppRes publish_app_res;
@@ -630,7 +207,7 @@ void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
     int rc = 0;
     std::string ret_msg = "";
 
-    auto application = applications.get_application(publish_app_req.app_id());
+    auto application = applications->get_application(publish_app_req.app_id());
     if (application == nullptr) {
         rc = -1;
         ret_msg = "Application not exist";
@@ -659,7 +236,7 @@ void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
 
         // 现在我们已经知道这个应用要部署在哪个主机上了,因此我们可以将数据写入数据库,然后同步内存信息,并通知da
         app_id = publish_app_req.app_id();
-        app_name = applications.get_application(app_id)->get_name();
+        app_name = applications->get_application(app_id)->get_name();
         runtime_name = publish_app_req.runtime_name();
         version_id = application->get_version(publish_app_req.app_version())->get_id();
         std::vector<publish_app_cfg_ports_model_ptr> cfg_ports;
@@ -718,7 +295,7 @@ void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
 
         // DB持久化
         try {
-            model_mgr.bind_app(target_agent_ip, app_id, version_id, runtime_name,
+            model_mgr->bind_app(target_agent_ip, app_id, version_id, runtime_name,
                                cfg_ports, cfg_volumes, cfg_dns, cfg_extra_cmd,
                                hints, &uniq_id);
         } catch (sql::SQLException &e) {
@@ -784,14 +361,14 @@ void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
             }
         }
 
-        auto target_agent = agents.get_agent_by_key(agents.get_key(target_agent_ip, DA_NAME));
+        auto target_agent = agents->get_agent_by_key(agents->get_key(target_agent_ip, DA_NAME));
         auto da_agent = std::static_pointer_cast<DockerAgent>(target_agent);
         da_agent->add_application(app);
     }
 
     // 状态同步都成功了,通知docker agent(da)同步最新状态
     if (rc == 0) {
-        auto target_agent = agents.get_agent_by_key(agents.get_key(target_agent_ip, DA_NAME));
+        auto target_agent = agents->get_agent_by_key(agents->get_key(target_agent_ip, DA_NAME));
         send_simple_msg(target_agent->get_sess(), MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_REQ);
     }
 
@@ -806,7 +383,7 @@ void Controller::handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg) {
     int rc = 0;
     std::string ret_msg = "";
 
-    auto agents_ = agents.get_agents();
+    auto agents_ = agents->get_agents();
     for (auto &a: agents_) {
         auto agent = agent_list.add_agents();
         agent->set_type(a->get_agent_type());
@@ -855,7 +432,6 @@ void Controller::handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg) {
 }
 
 void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
-    auto model_mgr = ModelMgr();
     ogp_msg::AddApplicationReq add_app_req;
     ogp_msg::AddApplicationRes add_app_res;
     int app_id;
@@ -865,7 +441,7 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
     std::string ret_msg = "";
     try {
         add_app_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
-        model_mgr.add_app(
+        model_mgr->add_app(
                 add_app_req.app_name(),
                 add_app_req.app_source(),
                 add_app_req.app_desc(),
@@ -876,7 +452,7 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
                 &registe_time
         );
         g_lock.lock();
-        auto app = applications.get_application(add_app_req.app_name());
+        auto app = applications->get_application(add_app_req.app_name());
         if (app == nullptr) {
             app = std::make_shared<Application>(
                     app_id,
@@ -884,7 +460,7 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
                     add_app_req.app_name(),
                     add_app_req.app_desc()
             );
-            applications.add_application(app);
+            applications->add_application(app);
         }
         g_lock.unlock();
         app->add_version(
@@ -917,7 +493,7 @@ void Controller::handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg) {
     int rc = 0;
     std::string ret_msg = "";
     g_lock.lock();
-    auto apps = applications.get_applications();
+    auto apps = applications->get_applications();
     for (auto app: apps) {
         auto a = applications_list.add_applications();
         a->set_id(app->get_id());
@@ -941,22 +517,22 @@ void Controller::handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg) {
 
 void Controller::handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg) {
     g_lock.lock();
-    auto agent = agents.get_agent_by_sess(sess, DA_NAME);
+    auto agent = agents->get_agent_by_sess(sess, DA_NAME);
     if (agent != nullptr && agent->get_sess() != nullptr) {
-        LOG_ERROR("docker agent say hi, but it already exist. agent key: " << agents.get_key(agent))
+        LOG_ERROR("docker agent say hi, but it already exist. agent key: " << agents->get_key(agent))
         sess->invalid_sess();
         g_lock.unlock();
         return;
     } else if (agent != nullptr && agent->get_sess() == nullptr) {
-        LOG_INFO("Set session, agent key: " << agents.get_key(agent))
+        LOG_INFO("Set session, agent key: " << agents->get_key(agent))
         agent->set_sess(sess);
         g_lock.unlock();
         return;
     } else if (agent == nullptr) {
         auto docker_agent = std::make_shared<DockerAgent>();
         docker_agent->set_machine_ip(sess->get_address());
-        LOG_INFO("Add docker agent from sess, agent key: " << agents.get_key(docker_agent));
-        agents.add_agent(agents.get_key(docker_agent), docker_agent);
+        LOG_INFO("Add docker agent from sess, agent key: " << agents->get_key(docker_agent));
+        agents->add_agent(agents->get_key(docker_agent), docker_agent);
         docker_agent->set_sess(sess);
         g_lock.unlock();
     }
@@ -965,7 +541,7 @@ void Controller::handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg) {
 void Controller::handle_da_sync_msg(sess_ptr sess, msg_ptr msg) {
     ogp_msg::DockerRuntimeInfo docker_runtime_info;
     docker_runtime_info.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
-    auto docker_agent = std::static_pointer_cast<DockerAgent>(agents.get_agent_by_sess(sess));
+    auto docker_agent = std::static_pointer_cast<DockerAgent>(agents->get_agent_by_sess(sess));
     if (docker_agent == nullptr) {
         LOG_ERROR("docker_agent is nullptr")
         return;
@@ -1049,5 +625,5 @@ void Controller::handle_da_sync_msg(sess_ptr sess, msg_ptr msg) {
     send_msg(docker_agent->get_agent_lock(), docker_agent,
              docker_target_runtime_info, MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_RES);
 
-    agents.dump_status();
+    agents->dump_status();
 }

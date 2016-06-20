@@ -118,6 +118,10 @@ void AgentService::start_connect() {
     controller_sess->set_read_timeout(static_cast<unsigned int>(config_mgr.get_item("agent_read_timeout")->get_int()));
     controller_sess->set_write_timeout(static_cast<unsigned int>(config_mgr.get_item("agent_write_timeout")->get_int()));
     controller_sessions.push_back(controller_sess);
+    boost::asio::ip::tcp::endpoint cep(boost::asio::ip::address::from_string(
+            config_mgr.get_item("agent_bind_address")->get_str()), 0);
+    controller_sess->get_socket().open(boost::asio::ip::tcp::v4());
+    controller_sess->get_socket().bind(cep);
     controller_sess->get_socket().async_connect(ep,
                                                 boost::bind(&AgentService::handle_connect, this,
                                                             controller_sess, boost::asio::placeholders::error));

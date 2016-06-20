@@ -14,9 +14,26 @@
 #include "common/log.h"
 #include "third/json/json.hpp"
 
-class DockerClient {
+class DockerClientBase {
 public:
-    DockerClient(const std::string &host): host(host) { }
+    virtual ~DockerClientBase() {};
+    virtual void set_host(std::string host) = 0;
+    virtual nlohmann::json list_containers(int all=0) = 0;
+    virtual nlohmann::json create_container(nlohmann::json parameters, std::string name) = 0;
+    virtual void start_container(std::string container_id) = 0;
+    virtual void stop_container(std::string container_id) = 0;
+    virtual void kill_container(std::string container_id) = 0;
+    virtual void remove_container(std::string container_id) = 0;
+    virtual std::string get_container_id_by_name(std::string name) = 0;
+    virtual bool ping_docker() = 0;
+
+};
+
+class DockerClient: public DockerClientBase {
+public:
+    DockerClient() {};
+    ~DockerClient() {};
+    void set_host(std::string host_) {host = host_;}
     nlohmann::json list_containers(int all=0);
     nlohmann::json create_container(nlohmann::json parameters, std::string name);
     void start_container(std::string container_id);

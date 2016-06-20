@@ -7,6 +7,7 @@
 #include "boost/program_options.hpp"
 
 #include "common/config.h"
+#include "common/docker_client.h"
 #include "controller/docker_agent.h"
 #include "service/agent.h"
 
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]) {
     auto thread_num = static_cast<unsigned int>(config_mgr.get_item("agent_thread_num")->get_int());
     auto controller_address = config_mgr.get_item("agent_controller_address")->get_str();
     auto controller_port = static_cast<unsigned int>(config_mgr.get_item("agent_controller_port")->get_int());
-    DockerAgent docker_agent;
+    DockerAgent docker_agent(new DockerClient());
     AgentService agent_service(thread_num, controller_address, controller_port, &docker_agent);
     agent_service.run();
     return 0;

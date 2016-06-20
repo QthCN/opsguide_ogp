@@ -108,11 +108,8 @@ void DockerAgent::docker_worker() {
 void DockerAgent::start_container(container_ptr container) {
     LOG_INFO("start container: " << container->get_name())
     try {
-        auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
-        DockerClient docker_client(docker_host);
-
         // 首先判断容器是否存在,如果不存在需要先创建容器
-        auto container_id = docker_client.get_container_id_by_name(container->get_name());
+        auto container_id = docker_client->get_container_id_by_name(container->get_name());
         if (container_id == "") {
             // 容器不存在,先创建容器
             // 构造请求报文
@@ -153,12 +150,12 @@ void DockerAgent::start_container(container_ptr container) {
             LOG_DEBUG("Create container, request data:")
             LOG_DEBUG(j.dump())
 
-            docker_client.create_container(j, container->get_name());
-            container_id = docker_client.get_container_id_by_name(container->get_name());
+            docker_client->create_container(j, container->get_name());
+            container_id = docker_client->get_container_id_by_name(container->get_name());
         }
 
         //启动容器
-        docker_client.start_container(container_id);
+        docker_client->start_container(container_id);
 
     } catch (...) {
         LOG_ERROR("start container: " << container->get_name() << " error.")
@@ -168,20 +165,18 @@ void DockerAgent::start_container(container_ptr container) {
 void DockerAgent::stop_and_remove_container(container_ptr container) {
     LOG_INFO("stop and remove container: " << container->get_name())
     try {
-        auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
-        DockerClient docker_client(docker_host);
-        auto container_id = docker_client.get_container_id_by_name(container->get_name());
+        auto container_id = docker_client->get_container_id_by_name(container->get_name());
         if (container_id == "") {
             LOG_WARN("container " << container->get_name() << " not exist.")
             return;
         }
         try {
-            docker_client.kill_container(container_id);
+            docker_client->kill_container(container_id);
         } catch (...) {
             // 忽略这个异常,因为我们马上就会执行remove操作,如果有问题的话remove会暴露问题
         }
 
-        docker_client.remove_container(container_id);
+        docker_client->remove_container(container_id);
 
     } catch (...) {
         LOG_ERROR("stop and remove container: " << container->get_name() << " error.")
@@ -209,22 +204,20 @@ void DockerAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
 void DockerAgent::handle_ct_sync_req_msg(sess_ptr sess, msg_ptr msg) {
     // controller发来同步请求,此时da需要收集本地信息交给controller,并从controller中获取target信息
     try {
-        auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
         ogp_msg::DockerRuntimeInfo docker_runtime_info;
-        docker_runtime_info = get_docker_runtime_info_msg(docker_host);
+        docker_runtime_info = get_docker_runtime_info_msg();
         send_msg(agent_lock, controller_sess, docker_runtime_info, MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ);
     } catch (std::runtime_error &e) {
         LOG_ERROR("" << e.what())
     }
 }
 
-ogp_msg::DockerRuntimeInfo DockerAgent::get_docker_runtime_info_msg(std::string docker_host) {
-    DockerClient docker_client(docker_host);
+ogp_msg::DockerRuntimeInfo DockerAgent::get_docker_runtime_info_msg() {
     // 获取docker的运行时信息,包括系统资源情况及容器信息
     ogp_msg::DockerRuntimeInfo docker_runtime_info;
     try {
         // 容器信息
-        auto containers_info = docker_client.list_containers(1);
+        auto containers_info = docker_client->list_containers(1);
 
         for (auto &c: containers_info) {
             auto msg_container = docker_runtime_info.add_containers();
@@ -260,10 +253,9 @@ ogp_msg::DockerRuntimeInfo DockerAgent::get_docker_runtime_info_msg(std::string 
 
 void DockerAgent::collect_docker_rt_and_sync() {
     try {
-        auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
         // 获取docker的运行时信息,包括系统资源情况及容器信息
         ogp_msg::DockerRuntimeInfo docker_runtime_info;
-        docker_runtime_info = get_docker_runtime_info_msg(docker_host);
+        docker_runtime_info = get_docker_runtime_info_msg();
 
         // 发送同步信息给controller
         send_msg(agent_lock, controller_sess, docker_runtime_info, MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ);
@@ -275,7 +267,6 @@ void DockerAgent::collect_docker_rt_and_sync() {
 
 void DockerAgent::sync() {
     auto period = static_cast<unsigned int>(config_mgr.get_item("agent_sync_period")->get_int());
-    auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
 
     while (true) {
         collect_docker_rt_and_sync();
@@ -286,8 +277,7 @@ void DockerAgent::sync() {
 void DockerAgent::handle_ct_sync_msg(sess_ptr sess, msg_ptr msg) {
     ogp_msg::DockerTargetRuntimeInfo docker_target_runtime_info;
     docker_target_runtime_info.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
-    auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
-    ogp_msg::DockerRuntimeInfo current_docker_rt_infos = get_docker_runtime_info_msg(docker_host);
+    ogp_msg::DockerRuntimeInfo current_docker_rt_infos = get_docker_runtime_info_msg();
 
     std::vector<container_ptr> containers_to_remove;
     std::vector<container_ptr> containers_to_start;

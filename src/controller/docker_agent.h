@@ -7,6 +7,7 @@
 
 #include <queue>
 
+#include "common/docker_client.h"
 #include "controller/base.h"
 #include "controller/ma.h"
 #include "ogp_msg.pb.h"
@@ -31,7 +32,14 @@ typedef std::shared_ptr<DAAction> daaction_ptr;
 
 class DockerAgent: public BaseController {
 public:
-    DockerAgent() = default;
+    DockerAgent(DockerClientBase *docker_client_){
+        auto docker_host = static_cast<std::string>(config_mgr.get_item("agent_docker_host")->get_str());
+        docker_client = docker_client_;
+        docker_client->set_host(docker_host);
+    };
+    ~DockerAgent() {
+        delete docker_client;
+    }
     void init();
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
@@ -75,12 +83,13 @@ private:
     std::mutex agent_lock;
     void handle_ct_sync_msg(sess_ptr sess, msg_ptr msg);
     void handle_ct_sync_req_msg(sess_ptr sess, msg_ptr msg);
-    ogp_msg::DockerRuntimeInfo get_docker_runtime_info_msg(std::string docker_host);
+    ogp_msg::DockerRuntimeInfo get_docker_runtime_info_msg();
     std::queue<daaction_ptr> actions_queue;
     std::mutex actions_queue_lock;
     void start_container(container_ptr container);
     void stop_and_remove_container(container_ptr container);
     void collect_docker_rt_and_sync();
+    DockerClientBase* docker_client;
 };
 
 #endif //OGP_CONTROLLER_DOCKER_AGENT_H

@@ -7,7 +7,10 @@
 #include "boost/program_options.hpp"
 
 #include "common/config.h"
+#include "controller/agents.h"
+#include "controller/applications.h"
 #include "controller/controller.h"
+#include "model/model.h"
 #include "service/controller.h"
 
 using namespace boost::program_options;
@@ -34,7 +37,7 @@ int main(int argc, char *argv[]) {
     auto thread_num = static_cast<unsigned int>(config_mgr.get_item("controller_thread_num")->get_int());
     auto listen_address = config_mgr.get_item("controller_listen_address")->get_str();
     auto listen_port = static_cast<unsigned int>(config_mgr.get_item("controller_listen_port")->get_int());
-    Controller controller;
+    Controller controller(new ModelMgr(), new Agents(), new Applications());
     ControllerService controller_service(thread_num, listen_address, listen_port, &controller);
     controller_service.run();
     return 0;

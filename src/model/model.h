@@ -404,8 +404,28 @@ private:
 };
 typedef std::shared_ptr<AppVersionsModel> app_versions_model_ptr;
 
+class ModelMgrBase {
+public:
+    virtual ~ModelMgrBase() {}
+    virtual std::vector<machine_apps_info_model_ptr> get_machine_apps_info() = 0;
+    virtual std::vector<application_model_ptr> get_applications() = 0;
+    virtual std::vector<app_versions_model_ptr> get_app_versions_by_app_id(int app_id) = 0;
+    virtual void add_app(std::string app_name, std::string app_source, std::string app_desc,
+                         std::string app_version, std::string app_version_desc,
+                         int *app_id, int *version_id, std::string *registe_time) = 0;
+    virtual void bind_app(std::string ip_address, int app_id, int version_id, std::string runtime_name,
+                          std::vector<publish_app_cfg_ports_model_ptr> cfg_ports,
+                          std::vector<publish_app_cfg_volumes_model_ptr> cfg_volumes,
+                          std::vector<publish_app_cfg_dns_model_ptr> cfg_dns,
+                          publish_app_cfg_extra_cmd_model_ptr cfg_extra_cmd,
+                          std::vector<publish_app_hints_model_ptr> hints,
+                          int*uniq_id) = 0;
+    virtual void remove_version(int uniq_id) = 0;
+    virtual void update_version(int uniq_id, int new_version_id, std::string new_runtime_name) = 0;
+};
+
 // todo(tianhuan)目前使用短连接的形式,后续考虑使用连接池
-class ModelMgr {
+class ModelMgr:public ModelMgrBase {
 public:
     ModelMgr() {
         mysql_address = config_mgr.get_item("controller_mysql_address")->get_str();
@@ -413,6 +433,8 @@ public:
         mysql_password = config_mgr.get_item("controller_mysql_password")->get_str();
         mysql_schema = config_mgr.get_item("controller_mysql_schema")->get_str();
     }
+
+    ~ModelMgr() {}
 
     ModelMgr(std::string mysql_address_,
              std::string mysql_user_,
