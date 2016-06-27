@@ -5,6 +5,9 @@
 #ifndef OGP_SERVICE_SESSION_H
 #define OGP_SERVICE_SESSION_H
 
+#include <iostream>
+#include <memory>
+
 #include "service/message.h"
 
 

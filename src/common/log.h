@@ -5,6 +5,7 @@
 #ifndef OGP_COMMON_LOG_H
 #define OGP_COMMON_LOG_H
 
+#include <mutex>
 #include <string>
 #include <iostream>
 #include <sstream>

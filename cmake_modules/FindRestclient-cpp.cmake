@@ -13,6 +13,7 @@ find_path(LIBRESTCLIENT_CPP_INCLUDE_DIR
           restclient-cpp/restclient.h restclient-cpp/connection.h restclient-cpp/helpers.h restclient-cpp/version.h
           HINTS ${PC_RESTCLIENT_CPP_INCLUDEDIR} ${PC_RESTCLIENT_CPP_INCLUDE_DIRS}
           PATH_SUFFIXES restclient-cpp)
+SET(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 find_library(LIBRESTCLIENT_CPP_LIBRARY restclient-cpp
              HINTS ${PC_RESTCLIENT_CPP_LIBDIR} ${PC_RESTCLIENT_CPP_LIBRARY_DIRS})
 

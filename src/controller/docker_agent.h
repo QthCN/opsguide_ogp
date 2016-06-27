@@ -5,6 +5,7 @@
 #ifndef OGP_CONTROLLER_DOCKER_AGENT_H
 #define OGP_CONTROLLER_DOCKER_AGENT_H
 
+#include <mutex>
 #include <queue>
 
 #include "common/docker_client.h"

@@ -5,6 +5,9 @@
 #ifndef OGP_SERVICE_MESSAGE_H
 #define OGP_SERVICE_MESSAGE_H
 
+#include <iostream>
+#include <memory>
+
 #include "common/log.h"
 
 enum class MsgType: unsigned int {

@@ -3,7 +3,7 @@
 //
 #include "controller/controller.h"
 
-#include<ctime>
+#include <ctime>
 #include <map>
 #include <string>
 #include <vector>
@@ -472,11 +472,11 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
                     add_app_req.app_version_desc()
                 )
         );
-    } catch (std::runtime_error &e) {
-        rc = 1;
-        ret_msg = e.what();
     } catch (sql::SQLException &e) {
         rc = 2;
+        ret_msg = e.what();
+    } catch (std::runtime_error &e) {
+        rc = 1;
         ret_msg = e.what();
     }
 

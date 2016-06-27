@@ -5,6 +5,8 @@
 #ifndef OG_CONTROLLER_CONTROLLER_H
 #define OG_CONTROLLER_CONTROLLER_H
 
+#include <mutex>
+
 #include "controller/agents.h"
 #include "controller/applications.h"
 #include "controller/base.h"

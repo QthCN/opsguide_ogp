@@ -6,7 +6,10 @@
 #define OGP_CONTROLLER_APPLICATIONS_H
 
 #include <ctime>
+#include <iostream>
 #include <map>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 

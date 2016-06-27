@@ -9,8 +9,14 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
 
+SET(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+
+set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.60.0 COMPONENTS regex system date_time program_options filesystem REQUIRED)
-include_directories(${Boost_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIRS})
+
+find_package(CURL REQUIRED)
+include_directories($CURL_INCLUDE_DIRS)
 
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
@@ -76,7 +82,7 @@ set(DOCKER_AGENT_SOURCE_FILES
         src/third/json/json.hpp
         src/controller/ma.h)
 add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
-target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} )
+target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
 # ogp_cli
 set(OGP_CLI_SOURCE_FILES
@@ -128,3 +134,4 @@ target_link_libraries(ogp_test ${LIBRESTCLIENT_CPP_LIBRARIES})
 target_link_libraries(ogp_test ${PROTOBUF_LIBRARY})
 target_link_libraries(ogp_test ${LIBMYSQLCPPCONN_LIBRARIES})
 target_link_libraries(ogp_test ${GMOCK_LIBRARIES})
+target_link_libraries(ogp_test ${CURL_LIBRARIES})

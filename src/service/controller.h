@@ -5,6 +5,7 @@
 #ifndef OGP_SERVICE_CONTROLLER_H
 #define OGP_SERVICE_CONTROLLER_H
 
+#include <mutex>
 #include <queue>
 #include <string>
 #include <vector>
