@@ -98,6 +98,26 @@ void DockerClient::remove_container(std::string container_id) {
     }
 }
 
+void DockerClient::pull_image(std::string image_name) {
+    auto subpath = "/images/create?fromImage=";
+    auto path = "http://" + host + subpath + image_name;
+    RestClient::Response r = RestClient::post(path, "application/json", "");
+    if (r.code != 200) {
+        LOG_ERROR("err code: " << r.code << " err body: " << r.body)
+        throw std::runtime_error("kill_container error: " + r.body);
+    }
+}
+
+bool DockerClient::image_exist(std::string image) {
+    auto images = list_local_images();
+    for (auto &i : images) {
+        if (i == image) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool DockerClient::ping_docker() {
     auto subpath = "/_ping";
     auto path = "http://" + host + subpath;
@@ -109,3 +129,21 @@ bool DockerClient::ping_docker() {
     return true;
 }
 
+std::vector<std::string> DockerClient::list_local_images() {
+    auto subpath = "/images/json?all=0";
+    auto path = "http://" + host + subpath;
+    RestClient::Response r = RestClient::get(path);
+    if (r.code != 200) {
+        LOG_ERROR("err code: " << r.code << " err body: " << r.body)
+        throw std::runtime_error("list_local_images error: " + r.body);
+    }
+    json result = json::parse(r.body);
+    std::vector<std::string> tags;
+    for (auto &img: result) {
+        for (auto &tag: img["RepoTags"]) {
+            std::string t = tag;
+            tags.push_back(t);
+        }
+    }
+    return tags;
+}

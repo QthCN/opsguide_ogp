@@ -108,7 +108,12 @@ void DockerAgent::docker_worker() {
 void DockerAgent::start_container(container_ptr container) {
     LOG_INFO("start container: " << container->get_name())
     try {
-        // 首先判断容器是否存在,如果不存在需要先创建容器
+        // 判断镜像是否存在,不存在则下载镜像
+        if (!docker_client->image_exist(container->get_image())) {
+            docker_client->pull_image(container->get_image());
+        }
+
+        // 判断容器是否存在,如果不存在需要先创建容器
         auto container_id = docker_client->get_container_id_by_name(container->get_name());
         if (container_id == "") {
             // 容器不存在,先创建容器
@@ -120,7 +125,7 @@ void DockerAgent::start_container(container_ptr container) {
                 j["Volumes"][v->docker_volume] = std::map<std::string, std::string>();
             }
             for (auto &p: container->get_cfg_ports()) {
-                std::string key = std::to_string(p->public_port) + "/" + p->type;
+                std::string key = std::to_string(p->private_port) + "/" + p->type;
                 j["ExposedPorts"][key] = std::map<std::string, std::string>();
             }
             std::vector<std::string> hostconfig_binds;
@@ -133,10 +138,10 @@ void DockerAgent::start_container(container_ptr container) {
             std::map<std::string, std::vector<std::map<std::string, std::string>>> hostconfig_portbindings;
             for (auto &p: container->get_cfg_ports()) {
                 std::map<std::string, std::string> hp;
-                hp["HostPort"] = std::to_string(p->private_port);
+                hp["HostPort"] = std::to_string(p->public_port);
                 std::vector<std::map<std::string, std::string>> ps;
                 ps.push_back(hp);
-                std::string key = std::to_string(p->public_port) + "/" + p->type;
+                std::string key = std::to_string(p->private_port) + "/" + p->type;
                 hostconfig_portbindings[key] = ps;
             }
             j["HostConfig"]["PortBindings"] = hostconfig_portbindings;
@@ -207,7 +212,7 @@ void DockerAgent::handle_ct_sync_req_msg(sess_ptr sess, msg_ptr msg) {
         ogp_msg::DockerRuntimeInfo docker_runtime_info;
         docker_runtime_info = get_docker_runtime_info_msg();
         send_msg(agent_lock, controller_sess, docker_runtime_info, MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ);
-    } catch (std::runtime_error &e) {
+    } catch (std::exception &e) {
         LOG_ERROR("" << e.what())
     }
 }
@@ -245,7 +250,7 @@ ogp_msg::DockerRuntimeInfo DockerAgent::get_docker_runtime_info_msg() {
                 msg_port->set_type(it.value()["Type"]);
             }
         }
-    } catch (std::runtime_error &e) {
+    } catch (std::exception &e) {
         LOG_ERROR("" << e.what())
     }
     return docker_runtime_info;
@@ -260,7 +265,7 @@ void DockerAgent::collect_docker_rt_and_sync() {
         // 发送同步信息给controller
         send_msg(agent_lock, controller_sess, docker_runtime_info, MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ);
 
-    } catch (std::runtime_error &e) {
+    } catch (std::exception &e) {
         LOG_ERROR("" << e.what())
     }
 }

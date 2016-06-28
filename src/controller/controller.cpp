@@ -475,7 +475,7 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
     } catch (sql::SQLException &e) {
         rc = 2;
         ret_msg = e.what();
-    } catch (std::runtime_error &e) {
+    } catch (std::exception &e) {
         rc = 1;
         ret_msg = e.what();
     }
@@ -529,11 +529,16 @@ void Controller::handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg) {
         g_lock.unlock();
         return;
     } else if (agent == nullptr) {
-        auto docker_agent = std::make_shared<DockerAgent>();
-        docker_agent->set_machine_ip(sess->get_address());
-        LOG_INFO("Add docker agent from sess, agent key: " << agents->get_key(docker_agent));
-        agents->add_agent(agents->get_key(docker_agent), docker_agent);
-        docker_agent->set_sess(sess);
+        if (sess->get_address() != "127.0.0.1") {
+            auto docker_agent = std::make_shared<DockerAgent>();
+            docker_agent->set_machine_ip(sess->get_address());
+            LOG_INFO("Add docker agent from sess, agent key: " << agents->get_key(docker_agent));
+            agents->add_agent(agents->get_key(docker_agent), docker_agent);
+            docker_agent->set_sess(sess);
+        } else {
+            LOG_ERROR("Agent with ip 127.0.0.1 is invalid.")
+            sess->invalid_sess();
+        }
         g_lock.unlock();
     }
 }

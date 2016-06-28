@@ -46,7 +46,6 @@ TEST_F(ControllerTest, handle_da_say_hi_msg_da_not_exist) {
     agent->set_sess(sess);
 
     EXPECT_CALL(*sess, get_address())
-            .Times(1)
             .WillRepeatedly(Return(address));
     EXPECT_CALL(*agents, get_key(_))
             .Times(2)
@@ -95,6 +94,27 @@ TEST_F(ControllerTest, handle_da_say_hi_msg_da_exist_with_sess) {
             .WillRepeatedly(Return(agent));
     EXPECT_CALL(*agents, add_agent(_, _))
             .Times(0);
+
+    controller.handle_msg(sess, msg);
+}
+
+TEST_F(ControllerTest, handle_da_say_hi_msg_da_not_exist_but_ip_is_localhost) {
+    Controller controller(model_mgr, agents, applications);
+    std::string address = "127.0.0.1";
+    auto sess = std::make_shared<NiceMock<MockSession>>();
+    auto msg = std::make_shared<Message>(MsgType::DA_DOCKER_SAY_HI, new char[0], 0);
+    agent_ptr agent = std::make_shared<DockerAgent>();
+    agent_ptr arg_agent;
+    agent->set_machine_ip(address);
+    agent->set_sess(sess);
+
+    EXPECT_CALL(*sess, get_address())
+            .WillRepeatedly(Return(address));
+    EXPECT_CALL(*agents, get_key(_))
+            .WillRepeatedly(Return(address+":"+DA_NAME));
+    EXPECT_CALL(*agents, add_agent(address+":"+DA_NAME, _))
+            .Times(0);
+    EXPECT_CALL(*sess, invalid_sess()).Times(1);
 
     controller.handle_msg(sess, msg);
 }

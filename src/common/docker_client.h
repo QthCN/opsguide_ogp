@@ -24,7 +24,10 @@ public:
     virtual void stop_container(std::string container_id) = 0;
     virtual void kill_container(std::string container_id) = 0;
     virtual void remove_container(std::string container_id) = 0;
+    virtual void pull_image(std::string image_name) = 0;
+    virtual std::vector<std::string> list_local_images() = 0;
     virtual std::string get_container_id_by_name(std::string name) = 0;
+    virtual bool image_exist(std::string image) = 0;
     virtual bool ping_docker() = 0;
 
 };
@@ -41,6 +44,9 @@ public:
     void kill_container(std::string container_id);
     void remove_container(std::string container_id);
     std::string get_container_id_by_name(std::string name);
+    std::vector<std::string> list_local_images();
+    void pull_image(std::string image_name);
+    bool image_exist(std::string image);
     bool ping_docker();
 
 private:
