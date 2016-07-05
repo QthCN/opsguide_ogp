@@ -36,7 +36,9 @@ int main(int argc, char *argv[]) {
     auto controller_address = config_mgr.get_item("agent_controller_address")->get_str();
     auto controller_port = static_cast<unsigned int>(config_mgr.get_item("agent_controller_port")->get_int());
     DockerAgent docker_agent(new DockerClient());
-    AgentService agent_service(thread_num, controller_address, controller_port, &docker_agent);
+    AgentService agent_service(thread_num, controller_address,
+                               controller_port, &docker_agent,
+                               MsgType::DA_DOCKER_SAY_HI);
     agent_service.run();
     return 0;
 }

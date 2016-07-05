@@ -42,6 +42,9 @@ enum class MsgType: unsigned int {
     // CLI
     CI_CLI_ADD_APP_REQ = 12000,
 
+    // sd proxy
+    SP_SDPROXY_SAY_HI = 15000,
+
 };
 
 class Message {

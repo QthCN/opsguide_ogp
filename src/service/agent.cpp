@@ -44,11 +44,13 @@ void ControllerSession::invalid_sess() {
 }
 
 AgentService::AgentService(unsigned int thread_num, const std::string &controller_address,
-                                     unsigned int controller_port,
-                                     BaseController *controller):thread_num(thread_num),
-                                                                 controller_address(controller_address),
-                                                                 controller_port(controller_port),
-                                                                 controller(controller) {
+                           unsigned int controller_port,
+                           BaseController *controller,
+                           MsgType srv_msg_id_type):thread_num(thread_num),
+                                                    controller_address(controller_address),
+                                                    controller_port(controller_port),
+                                                    controller(controller),
+                                                    srv_msg_id_type(srv_msg_id_type){
     controller->init();
 
     start_connect();
@@ -83,9 +85,9 @@ void AgentService::handle_connect(controller_sess_ptr controller_sess, boost::sy
 
         try {
             controller->associate_sess(controller_sess);
-            // 通知Controller我是一个docker agent
+            // 通知Controller我是什么类型
             controller_sess->send_msg(std::make_shared<Message>(
-                                        MsgType::DA_DOCKER_SAY_HI,
+                                        srv_msg_id_type,
                                         new char[0],
                                         0
                                 ));

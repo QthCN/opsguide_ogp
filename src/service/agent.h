@@ -99,7 +99,8 @@ public:
     typedef std::shared_ptr<ControllerSession> controller_sess_ptr;
 
     AgentService(unsigned int thread_num, const std::string &controller_address,
-                      unsigned int controller_port, BaseController *controller);
+                 unsigned int controller_port, BaseController *controller,
+                 MsgType srv_msg_id_type);
     void run();
     void begin_write(controller_sess_ptr controller_sess);
 
@@ -125,6 +126,7 @@ private:
     boost::asio::io_service io_service;
     std::vector<controller_sess_ptr> controller_sessions;
     std::mutex sess_lock;
+    MsgType srv_msg_id_type;
 };
 
 #endif //OGP_SERVICE_AGENT_H

@@ -84,6 +84,26 @@ set(DOCKER_AGENT_SOURCE_FILES
 add_executable(ogp-docker-agent src/cli/docker_agent.cpp ${DOCKER_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-docker-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
+# sd proxy
+set(SD_PROXY_SOURCE_FILES
+        src/common/utils.h
+        src/common/utils.cpp
+        src/common/config.h
+        src/common/config.cpp
+        src/common/log.h
+        src/common/log.cpp
+        src/service/session.h
+        src/service/message.h
+        src/controller/base.h
+        src/service/proxy.h
+        src/service/proxy.cpp
+        src/controller/sd_proxy.h
+        src/controller/sd_proxy.cpp
+        src/controller/utils.cpp
+        src/controller/utils.h)
+add_executable(ogp-sd-proxy src/cli/sd_proxy.cpp ${SD_PROXY_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
+target_link_libraries(ogp-sd-proxy ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
+
 # ogp_cli
 set(OGP_CLI_SOURCE_FILES
         src/common/log.h
