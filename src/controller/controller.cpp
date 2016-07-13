@@ -6,11 +6,13 @@
 #include <ctime>
 #include <map>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "common/log.h"
 #include "controller/agents.h"
 #include "controller/applications.h"
+#include "common/config.h"
 #include "controller/ma.h"
 #include "controller/utils.h"
 #include "model/model.h"
@@ -19,9 +21,24 @@
 void Controller::init() {
     LOG_INFO("Initialize agents.")
     agents->init(model_mgr, applications);
+    LOG_INFO("Initialize services.")
+    services->init(agents, applications);
     LOG_INFO("Initialize scheduler.")
     scheduler.init();
+
     LOG_INFO("Controller initialization finished.")
+
+    // dump状态线程
+    std::thread t1([this](){
+            auto do_dump = static_cast<unsigned int>(config_mgr.get_item("dump_status")->get_int());
+            while (true) {
+                if (do_dump == 1) {
+                    agents->dump_status();
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(5));
+            }
+        });
+    add_thread(std::move(t1));
 }
 
 void Controller::associate_sess(sess_ptr sess) {
@@ -84,13 +101,185 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::PO_PORTAL_UPGRADE_APPVER_REQ:
             handle_po_upgrade_appver_msg(sess, msg);
             break;
+            // portal发来的创建service的请求
+        case MsgType::PO_PORTAL_ADD_SERVICE_REQ:
+            handle_po_add_service_msg(sess, msg);
+            break;
+            // portal发来的删除service的请求
+        case MsgType::PO_PORTAL_DEL_SERVICE_REQ:
+            handle_po_del_service_msg(sess, msg);
+            break;
+            // portal发来的列出services的请求
+        case MsgType::PO_PORTAL_LIST_SERVICES_REQ:
+            handle_po_list_services_msg(sess, msg);
+            break;
 
             // cli发来的创建app请求
         case MsgType::CI_CLI_ADD_APP_REQ:
             handle_ci_add_app(sess, msg);
             break;
+
+            // SDProxy发来的say hi请求
+        case MsgType::SP_SDPROXY_SAY_HI:
+            handle_sp_say_hi_msg(sess, msg);
+            break;
+            // SDProxy发来的心跳请求
+        case MsgType::SP_SDPROXY_HEARTBEAT_REQ:
+            // 更新心跳同步时间
+            agent = agents->get_agent_by_sess(sess, SDP_NAME);
+            agent->set_last_heartbeat_time(std::time(0));
+            sess->send_msg(
+                    std::make_shared<Message>(
+                            MsgType::CT_SDPROXY_HEARTBEAT_RES,
+                            new char[0],
+                            0
+                    )
+            );
+            break;
+
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
+    }
+}
+
+void Controller::handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg) {
+    g_lock.lock();
+    auto agent = agents->get_agent_by_sess(sess, SDP_NAME);
+    if (agent != nullptr && agent->get_sess() != nullptr) {
+        LOG_ERROR("sdproxy say hi, but it already exist. agent key: " << agents->get_key(agent))
+        sess->invalid_sess();
+        g_lock.unlock();
+        return;
+    } else if (agent != nullptr && agent->get_sess() == nullptr) {
+        LOG_INFO("Set session, agent key: " << agents->get_key(agent))
+        agent->set_sess(sess);
+        g_lock.unlock();
+        return;
+    } else if (agent == nullptr) {
+        if (sess->get_address() != "127.0.0.1") {
+            auto sdproxy_agent = std::make_shared<SDProxyAgent>();
+            sdproxy_agent->set_machine_ip(sess->get_address());
+            LOG_INFO("Add sdproxy from sess, agent key: " << agents->get_key(sdproxy_agent));
+            agents->add_agent(agents->get_key(sdproxy_agent), sdproxy_agent);
+            sdproxy_agent->set_sess(sess);
+        } else {
+            LOG_ERROR("Agent with ip 127.0.0.1 is invalid.")
+            sess->invalid_sess();
+        }
+        g_lock.unlock();
+    }
+}
+
+void Controller::handle_po_list_services_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::ListServicesRes list_service_res;
+    auto header = list_service_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    auto services_info = services->list_services();
+    for (auto s: services_info) {
+        auto item = list_service_res.add_services();
+        item->set_id(s->get_id());
+        item->set_app_id(s->get_app_id());
+        item->set_service_type(s->get_service_type());
+        item->set_private_port(s->get_private_port());
+        item->set_service_port(s->get_service_port());
+        item->set_app_name(s->get_app_name());
+    }
+
+    // 返回结果给portal
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, list_service_res, MsgType::CT_PORTAL_LIST_SERVICES_RES);
+}
+
+void Controller::handle_po_del_service_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::DelServiceReq del_service_req;
+    del_service_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+    ogp_msg::DelServiceRes del_service_res;
+    auto header = del_service_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    try {
+        model_mgr->remove_service(del_service_req.service_id());
+    } catch (sql::SQLException &e) {
+        rc = 1;
+        ret_msg = e.what();
+    }
+
+    if (rc == 0) {
+        services->remove_service(del_service_req.service_id());
+    }
+
+    // 返回结果给portal
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, del_service_res, MsgType::CT_PORTAL_DEL_SERVICE_RES);
+
+    // 触发同步
+    if (rc == 0) {
+        services->sync_services();
+    }
+}
+
+void Controller::handle_po_add_service_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::AddServiceReq add_service_req;
+    add_service_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+    ogp_msg::AddServiceRes add_service_res;
+    auto header = add_service_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    auto app_id = add_service_req.app_id();
+    std::string service_type = add_service_req.service_type();
+
+    // 检查app_id是否存在
+    auto app = applications->get_application(app_id);
+    if (app == nullptr) {
+        rc = 2;
+        ret_msg = "app_id invalid";
+        LOG_ERROR(ret_msg);
+    }
+
+    if (rc == 0) {
+        int service_id = -1;
+        if (service_type == ST_PORT_SERVICE) {
+            auto service_port = add_service_req.port_service_body().service_port();
+            int private_port = -1;
+            if (add_service_req.port_service_body().has_private_port()) {
+                private_port = add_service_req.port_service_body().private_port();
+            }
+
+            try {
+                model_mgr->add_port_service(ST_PORT_SERVICE,
+                                            app_id,
+                                            service_port,
+                                            private_port,
+                                            &service_id);
+            } catch (sql::SQLException &e) {
+                rc = 4;
+                ret_msg = e.what();
+                LOG_ERROR(ret_msg);
+            }
+
+            if (rc == 0) {
+                services->add_service(service_id, ST_PORT_SERVICE, app_id, service_port, private_port);
+            }
+        } else {
+            rc = 1;
+            ret_msg = "Unknown service_type";
+            LOG_ERROR(ret_msg);
+        }
+    }
+
+    // 返回结果给portal
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, add_service_res, MsgType::CT_PORTAL_ADD_SERVICE_RES);
+    // 触发同步
+    if (rc == 0) {
+        services->sync_services();
     }
 }
 
@@ -296,8 +485,8 @@ void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
         // DB持久化
         try {
             model_mgr->bind_app(target_agent_ip, app_id, version_id, runtime_name,
-                               cfg_ports, cfg_volumes, cfg_dns, cfg_extra_cmd,
-                               hints, &uniq_id);
+                                cfg_ports, cfg_volumes, cfg_dns, cfg_extra_cmd,
+                                hints, &uniq_id);
         } catch (sql::SQLException &e) {
             rc = 2;
             ret_msg = e.what();
@@ -465,11 +654,11 @@ void Controller::handle_ci_add_app(sess_ptr sess, msg_ptr msg) {
         g_lock.unlock();
         app->add_version(
                 std::make_shared<AppVersion>(
-                    version_id,
-                    app_id,
-                    add_app_req.app_version(),
-                    registe_time,
-                    add_app_req.app_version_desc()
+                        version_id,
+                        app_id,
+                        add_app_req.app_version(),
+                        registe_time,
+                        add_app_req.app_version_desc()
                 )
         );
     } catch (sql::SQLException &e) {
@@ -629,6 +818,4 @@ void Controller::handle_da_sync_msg(sess_ptr sess, msg_ptr msg) {
 
     send_msg(docker_agent->get_agent_lock(), docker_agent,
              docker_target_runtime_info, MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_RES);
-
-    agents->dump_status();
 }

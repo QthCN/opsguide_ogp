@@ -78,3 +78,20 @@ CREATE TABLE PUBLISH_APP_CFG_EXTRA_CMD (
     PRIMARY KEY (id),
     KEY (uniq_id)
 );
+
+CREATE TABLE SERVICES (
+    id INT NOT NULL AUTO_INCREMENT,
+    service_type VARCHAR(1024) NOT NULL,
+    app_id INT NOT NULL,
+    PRIMARY KEY (id),
+    KEY (app_id)
+);
+
+CREATE TABLE SERVICE_PORTSERVICE (
+    id INT NOT NULL AUTO_INCREMENT,
+    service_id INT NOT NULL,
+    service_port INT NOT NULL,
+    private_port INT NOT NULL,
+    PRIMARY KEY (id),
+    KEY (service_id)
+);

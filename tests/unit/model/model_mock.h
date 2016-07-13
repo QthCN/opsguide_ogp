@@ -34,6 +34,9 @@ public:
                                 int*uniq_id));
     MOCK_METHOD1(remove_version, void(int uniq_id));
     MOCK_METHOD3(update_version, void((int uniq_id, int new_version_id, std::string new_runtime_name)));
+    MOCK_METHOD5(add_port_service, void(std::string service_type, int app_id, int service_port, int private_port, int *service_id));
+    MOCK_METHOD1(remove_service, void(int service_id));
+    MOCK_METHOD0(list_services, std::vector<service_model_ptr>());
 };
 
 #endif //OGP_TESTS_MODEL_TEST_H

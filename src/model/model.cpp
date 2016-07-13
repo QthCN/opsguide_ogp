@@ -440,3 +440,83 @@ void ModelMgr::update_version(int uniq_id, int new_version_id, std::string new_r
     SQLQUERY_END
 }
 
+std::vector<service_model_ptr> ModelMgr::list_services() {
+    SQLQUERY_BEGIN
+
+        stmt = conn->createStatement();
+        res = stmt->executeQuery("SELECT id, service_type, app_id FROM SERVICES");
+        std::vector<service_model_ptr> services;
+        while (res->next()) {
+            auto service_model = std::make_shared<ServiceModel>();
+            service_model->set_service_type(res->getString("service_type"));
+            service_model->set_id(res->getInt("id"));
+            service_model->set_app_id(res->getInt("app_id"));
+            services.push_back(service_model);
+        }
+        delete_ptr(&res);
+
+        for(auto s: services) {
+            auto service_id = s->get_id();
+            pstmt = conn->prepareStatement("SELECT service_port, private_port FROM SERVICE_PORTSERVICE "
+                                                   "WHERE service_id=?");
+            pstmt->setInt(1, service_id);
+            res = pstmt->executeQuery();
+            while (res->next()) {
+                if (res->getInt("service_port") == -1) {
+                    s->set_private_port(-1);
+                } else {
+                    s->set_private_port(res->getInt("service_port"));
+                }
+                s->set_service_port(res->getInt("private_port"));
+            }
+        }
+        SQLQUERY_CLEAR_RESOURCE
+        return services;
+    SQLQUERY_END
+}
+
+void ModelMgr::remove_service(int service_id) {
+    SQLQUERY_BEGIN
+
+        pstmt = conn->prepareStatement("DELETE FROM SERVICE_PORTSERVICE WHERE service_id=?");
+        pstmt->setInt(1, service_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+        pstmt = conn->prepareStatement("DELETE FROM SERVICES WHERE id=?");
+        pstmt->setInt(1, service_id);
+        SQLQUERY_CLEAR_RESOURCE
+
+    SQLQUERY_END
+}
+
+void ModelMgr::add_port_service(std::string service_type, int app_id, int service_port, int private_port,
+                                int *service_id) {
+    SQLQUERY_BEGIN
+
+        stmt = conn->createStatement();
+        stmt->execute("LOCK TABLES SERVICES WRITE, "
+                              "SERVICE_PORTSERVICE WRITE");
+
+        pstmt = conn->prepareStatement("INSERT INTO SERVICES(service_type, app_id) VALUES(?, ?)");
+        pstmt->setString(1, service_type);
+        pstmt->setInt(2, app_id);
+        pstmt->execute();
+        delete_ptr(&pstmt);
+
+        pstmt = conn->prepareStatement("SELECT LAST_INSERT_ID() AS id");
+        res = pstmt->executeQuery();
+        res->next();
+        *service_id = res->getInt("id");
+        delete_ptr(&pstmt);
+        delete_ptr(&res);
+
+        pstmt = conn->prepareStatement("INSERT INTO SERVICE_PORTSERVICE(service_id, service_port, private_port) "
+                                               "VALUES(?, ?, ?)");
+        pstmt->setInt(1, *service_id);
+        pstmt->setInt(2, service_port);
+        pstmt->setInt(3, private_port);
+
+        stmt->execute("UNLOCK TABLES");
+        SQLQUERY_CLEAR_RESOURCE
+    SQLQUERY_END
+}

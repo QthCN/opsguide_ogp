@@ -19,6 +19,7 @@
 
 // agent type
 #define DA_NAME "DOCKER_AGENT"
+#define SDP_NAME "SDPROXY_AGENT"
 #define NX_NAME "NGINX_AGENT"
 
 class Agent {
@@ -62,6 +63,13 @@ private:
     std::mutex agent_lock;
 };
 typedef std::shared_ptr<Agent> agent_ptr;
+
+class SDProxyAgent: public Agent {
+public:
+    SDProxyAgent(): Agent(SDP_NAME) {}
+    ~SDProxyAgent() {}
+};
+
 
 class DockerAgent: public Agent {
 public:
@@ -128,6 +136,7 @@ public:
     virtual agent_ptr get_agent_by_sess(sess_ptr sess, std::string agent_type) = 0;
     virtual void add_agent(std::string key, agent_ptr agent) = 0;
     virtual std::vector<agent_ptr> get_agents() = 0;
+    virtual std::vector<agent_ptr> get_agents_by_type(std::string agent_type) = 0;
     virtual void dump_status() = 0;
     virtual void init(ModelMgrBase *model_mgr_, ApplicationsBase *applications_) = 0;
 };
@@ -210,6 +219,18 @@ public:
         return agents;
     };
 
+    std::vector<agent_ptr> get_agents_by_type(std::string agent_type) {
+        std::vector<agent_ptr> agents;
+        agents_map_lock.lock();
+        for (auto it=agents_map.begin(); it!=agents_map.end(); it++) {
+            if (it->second->get_agent_type() == agent_type) {
+                agents.push_back(it->second);
+            }
+        }
+        agents_map_lock.unlock();
+        return agents;
+    }
+
     void dump_status() {
         auto agents = get_agents();
         LOG_INFO("Agent size: " << std::to_string(agents.size()))
@@ -243,6 +264,10 @@ public:
                              << " RUNTIME_NAME: " << app->get_runtime_name() << " STATUS: " << app_status)
                 }
                 da->get_applications_lock().unlock();
+            } else if (agent_type == SDP_NAME) {
+                LOG_INFO("SDP")
+                LOG_INFO("IP: " << agent->get_machine_ip())
+                LOG_INFO("Has SESS: " << std::to_string(agent->has_sess()))
             }
             LOG_INFO("---------")
         }

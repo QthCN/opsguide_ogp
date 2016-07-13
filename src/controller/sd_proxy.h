@@ -21,10 +21,12 @@ public:
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
     void invalid_sess(sess_ptr sess);
+    // 心跳同步线程
+    void send_heartbeat();
 
 private:
     std::mutex g_lock;
-
+    sess_ptr controller_sess = nullptr;
 };
 
 #endif //OGP_CONTROLLER_SD_PROXY_H

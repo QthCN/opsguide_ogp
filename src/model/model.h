@@ -404,6 +404,60 @@ private:
 };
 typedef std::shared_ptr<AppVersionsModel> app_versions_model_ptr;
 
+class ServiceModel {
+public:
+    ServiceModel() {}
+
+
+    int get_id() const {
+        return id;
+    }
+
+    void set_id(int id) {
+        ServiceModel::id = id;
+    }
+
+    const std::string &get_service_type() const {
+        return service_type;
+    }
+
+    void set_service_type(const std::string &service_type) {
+        ServiceModel::service_type = service_type;
+    }
+
+    int get_service_port() const {
+        return service_port;
+    }
+
+    void set_service_port(int service_port) {
+        ServiceModel::service_port = service_port;
+    }
+
+    int get_private_port() const {
+        return private_port;
+    }
+
+    void set_private_port(int private_port) {
+        ServiceModel::private_port = private_port;
+    }
+
+    int get_app_id() const {
+        return app_id;
+    }
+
+    void set_app_id(int app_id) {
+        ServiceModel::app_id = app_id;
+    }
+
+private:
+    int id;
+    std::string service_type;
+    int app_id;
+    int service_port;
+    int private_port;
+};
+typedef std::shared_ptr<ServiceModel> service_model_ptr;
+
 class ModelMgrBase {
 public:
     virtual ~ModelMgrBase() {}
@@ -422,6 +476,10 @@ public:
                           int*uniq_id) = 0;
     virtual void remove_version(int uniq_id) = 0;
     virtual void update_version(int uniq_id, int new_version_id, std::string new_runtime_name) = 0;
+    virtual void add_port_service(std::string service_type, int app_id, int service_port, int private_port,
+                                  int *service_id) = 0;
+    virtual void remove_service(int service_id) = 0;
+    virtual std::vector<service_model_ptr> list_services() = 0;
 };
 
 // todo(tianhuan)目前使用短连接的形式,后续考虑使用连接池
@@ -460,6 +518,10 @@ public:
                   int*uniq_id);
     void remove_version(int uniq_id);
     void update_version(int uniq_id, int new_version_id, std::string new_runtime_name);
+    void add_port_service(std::string service_type, int app_id, int service_port, int private_port,
+                          int *service_id);
+    void remove_service(int service_id);
+    std::vector<service_model_ptr> list_services();
 
 private:
     std::string mysql_address;

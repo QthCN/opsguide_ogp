@@ -20,6 +20,7 @@ public:
     MOCK_METHOD0(get_agents, std::vector<agent_ptr>());
     MOCK_METHOD0(dump_status, void());
     MOCK_METHOD2(init, void((ModelMgrBase *model_mgr_, ApplicationsBase *applications_)));
+    MOCK_METHOD1(get_agents_by_type, std::vector<agent_ptr>(std::string agent_type));
 };
 
 

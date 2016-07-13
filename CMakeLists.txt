@@ -58,7 +58,8 @@ set(CONTROLLER_SOURCE_FILES
         src/controller/utils.h
         src/controller/ma.h
         src/controller/agents.h
-        src/controller/applications.h)
+        src/controller/applications.h
+        src/controller/service.h)
 add_executable(ogp-controller src/cli/controller.cpp ${CONTROLLER_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-controller ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY} ${LIBMYSQLCPPCONN_LIBRARIES})
 
@@ -115,11 +116,13 @@ target_link_libraries(ogp-cli ${Boost_LIBRARIES} ${PROTOBUF_LIBRARY})
 
 # test
 set(OGP_TEST_SOURCE_FILES
-        tests/common_tests.cpp
         tests/unit/model/model_mock.h
         tests/unit/controller/controller_test.cpp
         tests/unit/controller/applications_mock.h
-        tests/unit/controller/agents_mock.h tests/unit/service/session_mock.h)
+        tests/unit/controller/agents_mock.h
+        tests/unit/service/session_mock.h
+        tests/unit/controller/service_mock.h
+        tests/unit/controller/service_test.cpp)
 add_executable(ogp_test ${OGP_TEST_SOURCE_FILES}
                         ${ProtoSources}
                         ${ProtoHeaders}
@@ -147,7 +150,8 @@ add_executable(ogp_test ${OGP_TEST_SOURCE_FILES}
                         src/controller/utils.cpp
                         src/controller/utils.h
                         src/controller/controller.h
-                        src/controller/controller.cpp)
+                        src/controller/controller.cpp
+                        src/controller/service.h)
 target_link_libraries(ogp_test ${GTEST_BOTH_LIBRARIES})
 target_link_libraries(ogp_test ${Boost_LIBRARIES})
 target_link_libraries(ogp_test ${LIBRESTCLIENT_CPP_LIBRARIES})

@@ -208,3 +208,75 @@ message UpgradeAppVerReq {
 message UpgradeAppVerRes {
     required MsgHeader header = 1;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message AddPortServiceReqBody {
+    required int32 service_port = 1;
+    optional int32 private_port = 2;
+}
+
+// service创建请求
+message AddServiceReq {
+    required int32 app_id = 1;
+    required string service_type = 2;
+    optional AddPortServiceReqBody port_service_body = 3;
+}
+
+// service创建响应
+message AddServiceRes {
+    required MsgHeader header = 1;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 删除service请求
+message DelServiceReq {
+    required int32 service_id = 1;
+}
+
+// 删除service响应
+message DelServiceRes {
+    required MsgHeader header = 1;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message ListServicesItem {
+    required int32 id = 1;
+    required int32 app_id = 2;
+    required string app_name = 3;
+    required int32 service_port = 4;
+    required int32 private_port = 5;
+    required string service_type = 6;
+}
+
+// 获取service列表响应
+message ListServicesRes {
+    required MsgHeader header = 1;
+    repeated ListServicesItem services = 2;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// SDProxy同步service信息的内容
+
+message ServiceSyncItem {
+    required string ma_ip = 1;
+    required int32 public_port = 2;
+}
+
+message ServiceSyncInfo {
+    required int32 service_id = 1;
+    required int32 app_id = 2;
+    required string app_name = 3;
+    required int32 service_port = 4;
+    required string service_type = 5;
+    repeated ServiceSyncItem items = 6;
+}
+
+message ServiceSyncData {
+    // 全局唯一的递增ID,SDProxy需要依靠这个ID排序获取到最新信息
+    required int32 uniq_id = 1;
+    repeated ServiceSyncInfo infos = 2;
+}
