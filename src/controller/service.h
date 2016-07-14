@@ -111,7 +111,6 @@ public:
         current_services = list_services();
         uniq_id = current_uniq_id;
         current_uniq_id += 1;
-        current_uniq_id_lock.unlock();
 
         ogp_msg::ServiceSyncData service_sync_data;
         service_sync_data.set_uniq_id(uniq_id);
@@ -154,10 +153,13 @@ public:
                 da->get_applications_lock().unlock();
             }
         }
+        current_uniq_id_lock.unlock();
 
         // 广播给所有的SDProxy
+        auto msg_type = MsgType::CT_SDPROXY_SERVICE_DATA_SYNC_REQ;
+        first_sync_lock.unlock();
         for (auto sdp: sdps) {
-            send_msg(sdp->get_sess(), service_sync_data, MsgType::CT_SDPROXY_SERVICE_DATA_SYNC_REQ);
+            send_msg(sdp->get_sess(), service_sync_data, msg_type);
         }
 
     }
@@ -168,6 +170,8 @@ private:
     std::mutex services_lock;
     std::mutex current_uniq_id_lock;
     int current_uniq_id;
+    bool first_sync = true;
+    std::mutex first_sync_lock;
 };
 
 

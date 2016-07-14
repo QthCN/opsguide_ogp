@@ -136,10 +136,18 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
                     )
             );
             break;
+            // SDProxy发来的service同步请求
+        case MsgType::SP_SDPPROXY_SERVICE_SYNC_REQ:
+            handle_sp_sync_service_msg(sess, msg);
+            break;
 
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void Controller::handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg) {
+    services->sync_services();
 }
 
 void Controller::handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg) {
@@ -154,6 +162,7 @@ void Controller::handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg) {
         LOG_INFO("Set session, agent key: " << agents->get_key(agent))
         agent->set_sess(sess);
         g_lock.unlock();
+        services->sync_services();
         return;
     } else if (agent == nullptr) {
         if (sess->get_address() != "127.0.0.1") {
@@ -167,6 +176,7 @@ void Controller::handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg) {
             sess->invalid_sess();
         }
         g_lock.unlock();
+        services->sync_services();
     }
 }
 

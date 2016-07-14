@@ -28,6 +28,7 @@ enum class MsgType: unsigned int {
     CT_PORTAL_LIST_SERVICES_RES = 11,
     CT_SDPROXY_SERVICE_DATA_SYNC_REQ = 12,
     CT_SDPROXY_HEARTBEAT_RES = 13,
+    CT_SDPROXY_SERVICE_FIRST_DATA_SYNC_REQ = 14,
 
     // docker agent
     DA_DOCKER_HEARTBEAT_REQ = 3000,
@@ -53,6 +54,7 @@ enum class MsgType: unsigned int {
     // sd proxy
     SP_SDPROXY_SAY_HI = 15000,
     SP_SDPROXY_HEARTBEAT_REQ = 15001,
+    SP_SDPPROXY_SERVICE_SYNC_REQ = 15002,
 
 };
 

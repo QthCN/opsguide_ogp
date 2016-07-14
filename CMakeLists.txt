@@ -101,7 +101,9 @@ set(SD_PROXY_SOURCE_FILES
         src/controller/sd_proxy.h
         src/controller/sd_proxy.cpp
         src/controller/utils.cpp
-        src/controller/utils.h)
+        src/controller/utils.h
+        src/controller/sd_utils.h
+        src/controller/sd_utils.cpp)
 add_executable(ogp-sd-proxy src/cli/sd_proxy.cpp ${SD_PROXY_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-sd-proxy ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
@@ -122,7 +124,9 @@ set(OGP_TEST_SOURCE_FILES
         tests/unit/controller/agents_mock.h
         tests/unit/service/session_mock.h
         tests/unit/controller/service_mock.h
-        tests/unit/controller/service_test.cpp)
+        tests/unit/controller/service_test.cpp
+        tests/unit/controller/sd_proxy_test.cpp
+        tests/unit/controller/sd_utils_test.cpp)
 add_executable(ogp_test ${OGP_TEST_SOURCE_FILES}
                         ${ProtoSources}
                         ${ProtoHeaders}
@@ -151,7 +155,11 @@ add_executable(ogp_test ${OGP_TEST_SOURCE_FILES}
                         src/controller/utils.h
                         src/controller/controller.h
                         src/controller/controller.cpp
-                        src/controller/service.h)
+                        src/controller/service.h
+                        src/controller/sd_proxy.cpp
+                        src/controller/sd_proxy.h
+                        src/controller/sd_utils.cpp
+                        src/controller/sd_utils.h)
 target_link_libraries(ogp_test ${GTEST_BOTH_LIBRARIES})
 target_link_libraries(ogp_test ${Boost_LIBRARIES})
 target_link_libraries(ogp_test ${LIBRESTCLIENT_CPP_LIBRARIES})

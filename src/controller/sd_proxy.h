@@ -9,24 +9,40 @@
 #include <queue>
 
 #include "controller/base.h"
+#include "controller/sd_utils.h"
 #include "ogp_msg.pb.h"
 #include "service/message.h"
 #include "service/session.h"
 
 class SDProxy: public BaseController {
 public:
-    SDProxy() {};
-    ~SDProxy() { }
+    SDProxy() {
+        cs_lock.lock();
+        current_services.set_uniq_id(-1);
+        cs_lock.unlock();
+    };
+    ~SDProxy() {}
     void init();
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
     void invalid_sess(sess_ptr sess);
     // 心跳同步线程
     void send_heartbeat();
+    // SDAgent同步线程
+    void sync_sda();
+    ogp_msg::ServiceSyncData get_current_services() {return current_services;}
+    void sync_controller();
 
 private:
     std::mutex g_lock;
     sess_ptr controller_sess = nullptr;
+    void handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg);
+    void handle_ct_sync_first_service_data_msg(sess_ptr sess, msg_ptr msg);
+    ogp_msg::ServiceSyncData current_services;
+    std::mutex cs_lock;
+    int sync_sda_current_uniq_id = -1;
+    std::mutex ssda_id_lock;
+    SDUtils sd_utils;
 };
 
 #endif //OGP_CONTROLLER_SD_PROXY_H
