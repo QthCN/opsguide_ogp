@@ -22,7 +22,7 @@ void Controller::init() {
     LOG_INFO("Initialize agents.")
     agents->init(model_mgr, applications);
     LOG_INFO("Initialize services.")
-    services->init(agents, applications);
+    services->init(agents, applications, model_mgr);
     LOG_INFO("Initialize scheduler.")
     scheduler.init();
 
@@ -360,6 +360,11 @@ void Controller::handle_po_upgrade_appver_msg(sess_ptr sess, msg_ptr msg) {
     header->set_rc(rc);
     header->set_message(ret_msg);
     send_msg(sess, upgrade_appver_res, MsgType::CT_PORTAL_UPGRADE_APPVER_RES);
+
+    // 同步service
+    if (rc == 0) {
+        services->sync_services();
+    }
 }
 
 void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {
@@ -396,6 +401,11 @@ void Controller::handle_po_remove_appver_msg(sess_ptr sess, msg_ptr msg) {
     header->set_rc(rc);
     header->set_message(ret_msg);
     send_msg(sess, remove_appver_res, MsgType::CT_PORTAL_REMOVE_APPVER_RES);
+
+    // 同步service
+    if (rc == 0) {
+        services->sync_services();
+    }
 }
 
 void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
@@ -574,6 +584,11 @@ void Controller::handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg) {
     header->set_rc(rc);
     header->set_message(ret_msg);
     send_msg(sess, publish_app_res, MsgType::CT_PORTAL_PUBLISH_APP_RES);
+
+    // 同步service
+    if (rc == 0) {
+        services->sync_services();
+    }
 }
 
 void Controller::handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg) {

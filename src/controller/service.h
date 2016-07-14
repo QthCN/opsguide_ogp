@@ -12,6 +12,7 @@
 #include "controller/agents.h"
 #include "controller/applications.h"
 #include "controller/utils.h"
+#include "model/model.h"
 #include "ogp_msg.pb.h"
 
 #define ST_PORT_SERVICE "PORT_SERVICE"
@@ -49,7 +50,7 @@ public:
     virtual void remove_service(int service_id) = 0;
     virtual std::vector<service_ptr> list_services() = 0;
     virtual void sync_services() = 0;
-    virtual void init(AgentsBase *agents, ApplicationsBase *applications) = 0;
+    virtual void init(AgentsBase *agents, ApplicationsBase *applications, ModelMgrBase *model_mgr) = 0;
 };
 
 class Services: public ServicesBase {
@@ -60,9 +61,18 @@ public:
         current_uniq_id_lock.unlock();
     }
     ~Services() {}
-    void init(AgentsBase *agents_, ApplicationsBase *applications_) {
+    void init(AgentsBase *agents_, ApplicationsBase *applications_, ModelMgrBase *model_mgr_) {
         agents = agents_;
         applications = applications_;
+        model_mgr = model_mgr_;
+
+        LOG_INFO("Initialize services from DB.")
+        auto db_services = model_mgr_->list_services();
+        for (auto db_service: db_services) {
+            add_service(db_service->get_id(), db_service->get_service_type(),
+                        db_service->get_app_id(), db_service->get_service_port(),
+                        db_service->get_private_port());
+        }
     }
 
     void add_service(int service_id, std::string service_type,
@@ -166,6 +176,7 @@ public:
 private:
     AgentsBase *agents;
     ApplicationsBase *applications;
+    ModelMgrBase *model_mgr;
     std::vector<service_ptr> services;
     std::mutex services_lock;
     std::mutex current_uniq_id_lock;

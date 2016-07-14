@@ -23,10 +23,11 @@ using ::testing::Return;
 class ServicesTest: public ::testing::Test {
 protected:
     virtual void SetUp() {
+        model_mgr = new NiceMock<MockModelMgr>();
         agents = new NiceMock<MockAgents>();
         applications = new NiceMock<MockApplications>();
         services = new Services();
-        services->init(agents, applications);
+        services->init(agents, applications, model_mgr);
     }
 
     virtual void TearDown() {
@@ -35,6 +36,7 @@ protected:
 
     NiceMock<MockAgents> *agents;
     NiceMock<MockApplications> *applications;
+    NiceMock<MockModelMgr> *model_mgr;
     ServicesBase *services;
 };
 

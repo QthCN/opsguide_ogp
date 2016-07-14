@@ -22,6 +22,9 @@ void SDProxy::init() {
     // 主动同步线程
     std::thread t1([this](){sync_controller();});
     add_thread(std::move(t1));
+    // SDA同步线程
+    std::thread t3([this](){sync_sda();});
+    add_thread(std::move(t3));
 }
 
 void SDProxy::associate_sess(sess_ptr sess) {
@@ -44,7 +47,10 @@ void SDProxy::invalid_sess(sess_ptr sess) {
         && controller_sess->get_port() == sess->get_port()) {
         controller_sess = nullptr;
         cs_lock.lock();
+        ssda_id_lock.lock();
         current_services.set_uniq_id(-1);
+        sync_sda_current_uniq_id = -1;
+        ssda_id_lock.unlock();
         cs_lock.unlock();
     }
     g_lock.unlock();
@@ -61,6 +67,24 @@ void SDProxy::handle_msg(sess_ptr sess, msg_ptr msg) {
             break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
+    }
+}
+
+void SDProxy::sync_sda() {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        cs_lock.lock();
+        ssda_id_lock.lock();
+        if (sync_sda_current_uniq_id >= current_services.uniq_id()) {
+            ssda_id_lock.unlock();
+            cs_lock.unlock();
+            continue;
+        }
+        sync_sda_current_uniq_id = current_services.uniq_id();
+        ssda_id_lock.unlock();
+        cs_lock.unlock();
+
+        // TODO(tianhuan): 向SDA广播信息
     }
 }
 
@@ -82,7 +106,7 @@ void SDProxy::sync_controller() {
 }
 
 void SDProxy::handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg) {
-    LOG_INFO("received sync request.")
+    LOG_INFO("sync request received.")
     ogp_msg::ServiceSyncData service_sync_data;
     service_sync_data.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
     cs_lock.lock();
