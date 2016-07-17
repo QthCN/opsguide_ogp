@@ -276,7 +276,8 @@ message ServiceSyncInfo {
 }
 
 message ServiceSyncData {
+    required MsgHeader header = 1;
     // 全局唯一的递增ID,SDProxy需要依靠这个ID排序获取到最新信息
-    required int32 uniq_id = 1;
-    repeated ServiceSyncInfo infos = 2;
+    required int32 uniq_id = 2;
+    repeated ServiceSyncInfo infos = 3;
 }

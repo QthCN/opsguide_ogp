@@ -47,6 +47,7 @@ private:
     void handle_po_add_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_del_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_list_services_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_list_services_detail_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg);
     void handle_ci_add_app(sess_ptr sess, msg_ptr msg);

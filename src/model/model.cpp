@@ -484,6 +484,7 @@ void ModelMgr::remove_service(int service_id) {
         delete_ptr(&pstmt);
         pstmt = conn->prepareStatement("DELETE FROM SERVICES WHERE id=?");
         pstmt->setInt(1, service_id);
+        pstmt->execute();
         SQLQUERY_CLEAR_RESOURCE
 
     SQLQUERY_END
@@ -515,6 +516,7 @@ void ModelMgr::add_port_service(std::string service_type, int app_id, int servic
         pstmt->setInt(1, *service_id);
         pstmt->setInt(2, service_port);
         pstmt->setInt(3, private_port);
+        pstmt->execute();
 
         stmt->execute("UNLOCK TABLES");
         SQLQUERY_CLEAR_RESOURCE

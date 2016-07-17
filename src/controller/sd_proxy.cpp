@@ -81,6 +81,7 @@ void SDProxy::sync_sda() {
             continue;
         }
         sync_sda_current_uniq_id = current_services.uniq_id();
+        // TODO(tianhuan): 拷贝一份current_services
         ssda_id_lock.unlock();
         cs_lock.unlock();
 

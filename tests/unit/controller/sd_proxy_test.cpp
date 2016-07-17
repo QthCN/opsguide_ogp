@@ -37,6 +37,11 @@ TEST_F(SDProxyTest, handle_ct_sync_service_data_req_with_good_uniq_id) {
     ASSERT_EQ(sd_proxy.get_current_services().uniq_id(), -1);
     ogp_msg::ServiceSyncData service_sync_data;
     service_sync_data.set_uniq_id(100);
+    auto header = service_sync_data.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+    header->set_rc(rc);
+    header->set_message(ret_msg);
     auto msg_size = service_sync_data.ByteSize();
     char *msg_data = new char[msg_size];
     service_sync_data.SerializeToArray(msg_data, msg_size);
@@ -51,6 +56,11 @@ TEST_F(SDProxyTest, handle_ct_sync_service_data_req_with_bad_uniq_id) {
     auto sess = std::make_shared<NiceMock<MockSession>>();
     ASSERT_EQ(sd_proxy.get_current_services().uniq_id(), -1);
     ogp_msg::ServiceSyncData service_sync_data;
+    auto header = service_sync_data.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+    header->set_rc(rc);
+    header->set_message(ret_msg);
     service_sync_data.set_uniq_id(-2);
     auto msg_size = service_sync_data.ByteSize();
     char *msg_data = new char[msg_size];

@@ -113,6 +113,10 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::PO_PORTAL_LIST_SERVICES_REQ:
             handle_po_list_services_msg(sess, msg);
             break;
+            // portal发来的列出services详细信息的请求
+        case MsgType::PO_PORTAL_LIST_SERVICES_DETAIL_REQ:
+            handle_po_list_services_detail_msg(sess, msg);
+            break;
 
             // cli发来的创建app请求
         case MsgType::CI_CLI_ADD_APP_REQ:
@@ -148,6 +152,12 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
 
 void Controller::handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg) {
     services->sync_services();
+}
+
+void Controller::handle_po_list_services_detail_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::ServiceSyncData service_sync_data;
+    services->get_sync_services_data(service_sync_data);
+    send_msg(sess, service_sync_data, MsgType::CT_PORTAL_LIST_SERVICES_DETAIL_RES);
 }
 
 void Controller::handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg) {

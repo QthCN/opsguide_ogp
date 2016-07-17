@@ -87,6 +87,6 @@ TEST_F(ServicesTest, del_service_with_no_exist_id) {
 
 TEST_F(ServicesTest, sync_services) {
     EXPECT_CALL(*agents, get_agents_by_type(DA_NAME)).Times(1);
-    EXPECT_CALL(*agents, get_agents_by_type(SDP_NAME)).Times(1);
+    EXPECT_CALL(*agents, get_agents_by_type(SDP_NAME)).Times(2);
     services->sync_services();
 }

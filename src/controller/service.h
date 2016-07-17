@@ -51,6 +51,7 @@ public:
     virtual std::vector<service_ptr> list_services() = 0;
     virtual void sync_services() = 0;
     virtual void init(AgentsBase *agents, ApplicationsBase *applications, ModelMgrBase *model_mgr) = 0;
+    virtual void get_sync_services_data(ogp_msg::ServiceSyncData &service_sync_data) = 0;
 };
 
 class Services: public ServicesBase {
@@ -108,7 +109,7 @@ public:
         return result;
     }
 
-    void sync_services() {
+    void get_sync_services_data(ogp_msg::ServiceSyncData &service_sync_data) {
         int uniq_id = -1;
         std::vector<agent_ptr> das;
         std::vector<agent_ptr> sdps;
@@ -122,8 +123,11 @@ public:
         uniq_id = current_uniq_id;
         current_uniq_id += 1;
 
-        ogp_msg::ServiceSyncData service_sync_data;
+        auto header = service_sync_data.mutable_header();
+        int rc = 0;
+        std::string ret_msg = "";
         service_sync_data.set_uniq_id(uniq_id);
+
         for (auto s: current_services) {
             auto service_sync_info = service_sync_data.add_infos();
             service_sync_info->set_service_id(s->get_id());
@@ -165,9 +169,19 @@ public:
         }
         current_uniq_id_lock.unlock();
 
+        header->set_rc(rc);
+        header->set_message(ret_msg);
+    }
+
+    void sync_services() {
+
+        ogp_msg::ServiceSyncData service_sync_data;
+        get_sync_services_data(service_sync_data);
+
         // 广播给所有的SDProxy
         auto msg_type = MsgType::CT_SDPROXY_SERVICE_DATA_SYNC_REQ;
         first_sync_lock.unlock();
+        auto sdps = agents->get_agents_by_type(SDP_NAME);
         for (auto sdp: sdps) {
             send_msg(sdp->get_sess(), service_sync_data, msg_type);
         }
