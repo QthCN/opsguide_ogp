@@ -76,6 +76,14 @@ void SDProxy::invalid_sess(sess_ptr sess) {
 }
 
 void SDProxy::disconnect_sdas() {
+    // 调用方负责加锁
+    auto as = agents->get_agents();
+    for (auto agent: as) {
+        if (agent->get_agent_type() == SDA_NAME) {
+            agent->get_sess()->invalid_sess();
+            agent->set_sess(nullptr);
+        }
+    }
 }
 
 void SDProxy::handle_msg(sess_ptr sess, msg_ptr msg) {
@@ -172,7 +180,8 @@ void SDProxy::sync_controller() {
         g_lock.lock();
         if (controller_sess == nullptr) {
             g_lock.unlock();
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            // 等待say hi操作完成。
+            std::this_thread::sleep_for(std::chrono::seconds(2));
             continue;
         }
         LOG_INFO("sync with controller now.")
@@ -185,6 +194,8 @@ void SDProxy::sync_controller() {
             g_lock.lock();
             if (controller_sess == nullptr) {
                 g_lock.unlock();
+                // 等待say hi操作完成。
+                std::this_thread::sleep_for(std::chrono::seconds(2));
                 break;
             }
             g_lock.unlock();
