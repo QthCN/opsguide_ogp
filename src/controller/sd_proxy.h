@@ -8,20 +8,24 @@
 #include <mutex>
 #include <queue>
 
+#include "controller/agents.h"
 #include "controller/base.h"
 #include "controller/sd_utils.h"
 #include "ogp_msg.pb.h"
 #include "service/message.h"
 #include "service/session.h"
 
+
 class SDProxy: public BaseController {
 public:
-    SDProxy() {
+    SDProxy(AgentsBase *agents): agents(agents) {
         cs_lock.lock();
         current_services.set_uniq_id(-1);
         cs_lock.unlock();
     };
-    ~SDProxy() {}
+    ~SDProxy() {
+        delete agents;
+    }
     void init();
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
@@ -37,12 +41,14 @@ private:
     std::mutex g_lock;
     sess_ptr controller_sess = nullptr;
     void handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg);
-    void handle_ct_sync_first_service_data_msg(sess_ptr sess, msg_ptr msg);
+    void disconnect_sdas();
+    void send_listen_info();
     ogp_msg::ServiceSyncData current_services;
     std::mutex cs_lock;
     int sync_sda_current_uniq_id = -1;
     std::mutex ssda_id_lock;
     SDUtils sd_utils;
+    AgentsBase *agents;
 };
 
 #endif //OGP_CONTROLLER_SD_PROXY_H

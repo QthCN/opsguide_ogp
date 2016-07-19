@@ -107,6 +107,26 @@ set(SD_PROXY_SOURCE_FILES
 add_executable(ogp-sd-proxy src/cli/sd_proxy.cpp ${SD_PROXY_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders})
 target_link_libraries(ogp-sd-proxy ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
+# sd agent
+set(SD_AGENT_SOURCE_FILES
+        src/common/utils.h
+        src/common/utils.cpp
+        src/common/config.h
+        src/common/config.cpp
+        src/common/log.h
+        src/common/log.cpp
+        src/service/session.h
+        src/service/message.h
+        src/controller/base.h
+        src/controller/sd_agent.h
+        src/controller/sd_agent.cpp
+        src/controller/utils.cpp
+        src/controller/utils.h
+        src/service/agent.h
+        src/service/agent.cpp)
+add_executable(ogp-sd-agent src/cli/sd_agent.cpp ${SD_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders} src/cli/sd_agent.cpp)
+target_link_libraries(ogp-sd-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
+
 # ogp_cli
 set(OGP_CLI_SOURCE_FILES
         src/common/log.h

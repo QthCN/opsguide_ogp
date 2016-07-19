@@ -133,6 +133,7 @@ private:
     void handle_connect(proxy_sess_ptr proxy_sess, boost::system::error_code);
     void handle_read(proxy_sess_ptr proxy_sess, boost::system::error_code const &error, size_t bytes_transferred);
     void handle_write(proxy_sess_ptr proxy_sess, boost::system::error_code const &error, size_t bytes_transferred);
+    bool has_controller_sess();
     size_t read_completion_handler(proxy_sess_ptr proxy_sess,
                                    boost::system::error_code const &error,
                                    size_t bytes_transferred);

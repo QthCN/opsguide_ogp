@@ -20,6 +20,7 @@
 // agent type
 #define DA_NAME "DOCKER_AGENT"
 #define SDP_NAME "SDPROXY_AGENT"
+#define SDA_NAME "SDAGENT_AGENT"
 #define NX_NAME "NGINX_AGENT"
 
 class Agent {
@@ -68,6 +69,15 @@ class SDProxyAgent: public Agent {
 public:
     SDProxyAgent(): Agent(SDP_NAME) {}
     ~SDProxyAgent() {}
+    std::mutex listen_lock;
+    std::string listen_ip = "";
+    int listen_port = -1;
+};
+
+class SDAgentAgent: public Agent {
+public:
+    SDAgentAgent(): Agent(SDA_NAME) {}
+    ~SDAgentAgent() {}
 };
 
 
@@ -266,6 +276,10 @@ public:
                 da->get_applications_lock().unlock();
             } else if (agent_type == SDP_NAME) {
                 LOG_INFO("SDP")
+                LOG_INFO("IP: " << agent->get_machine_ip())
+                LOG_INFO("Has SESS: " << std::to_string(agent->has_sess()))
+            } else if (agent_type == SDA_NAME) {
+                LOG_INFO("SDA")
                 LOG_INFO("IP: " << agent->get_machine_ip())
                 LOG_INFO("Has SESS: " << std::to_string(agent->has_sess()))
             }

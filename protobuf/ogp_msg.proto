@@ -281,3 +281,22 @@ message ServiceSyncData {
     required int32 uniq_id = 2;
     repeated ServiceSyncInfo infos = 3;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message SDEndpointInfo {
+    required string ip = 1;
+    required int32 port = 2;
+}
+
+message SDEndpointInfoRes {
+    required MsgHeader header = 1;
+    repeated SDEndpointInfo sds = 2;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message SDProxyListenInfoSyncReq {
+    required string ip = 1;
+    required int32 port = 2;
+}

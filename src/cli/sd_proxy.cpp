@@ -7,6 +7,7 @@
 #include "boost/program_options.hpp"
 
 #include "common/config.h"
+#include "controller/agents.h"
 #include "controller/sd_proxy.h"
 #include "service/proxy.h"
 
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     auto controller_port = static_cast<unsigned int>(config_mgr.get_item("proxy_controller_port")->get_int());
     auto listen_address = config_mgr.get_item("proxy_listen_address")->get_str();
     auto listen_port = static_cast<unsigned int>(config_mgr.get_item("proxy_listen_port")->get_int());
-    SDProxy sd_proxy;
+    SDProxy sd_proxy(new Agents());
     ProxyService proxy_service(s_thread_num, c_thread_num, controller_address, controller_port,
                                 listen_address, listen_port, &sd_proxy, MsgType::SP_SDPROXY_SAY_HI);
     proxy_service.run();

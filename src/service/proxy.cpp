@@ -188,18 +188,32 @@ void ProxyService::handle_connect(proxy_sess_ptr proxy_sess, boost::system::erro
 }
 
 void ProxyService::reconnect() {
-    sess_lock.lock();
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    if (proxy_sessions.size() == 0) {
+    sess_lock.lock();
+    if (!has_controller_sess()) {
         LOG_INFO("Reconnect to controller now.")
         start_connect();
     }
     sess_lock.unlock();
 }
 
+bool ProxyService::has_controller_sess() {
+    // 调用方负责加锁
+    auto controller_address = config_mgr.get_item("proxy_controller_address")->get_str();
+    auto controller_port = static_cast<unsigned int>(config_mgr.get_item("proxy_controller_port")->get_int());
+    for (auto s: proxy_sessions) {
+        if (s->get_address() == controller_address && s->get_port() == controller_port) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ProxyService::start_connect() {
     boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(controller_address), controller_port);
     proxy_sess_ptr proxy_sess = std::make_shared<ProxySession>(s_io_service, this, controller, T_PS_SERVER);
+    proxy_sess->set_port(controller_port);
+    proxy_sess->set_address(controller_address);
     proxy_sess->set_read_timeout(static_cast<unsigned int>(config_mgr.get_item("server_read_timeout")->get_int()));
     proxy_sess->set_write_timeout(static_cast<unsigned int>(config_mgr.get_item("server_write_timeout")->get_int()));
     proxy_sessions.push_back(proxy_sess);

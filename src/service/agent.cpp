@@ -108,14 +108,23 @@ void AgentService::reconnect() {
     sess_lock.lock();
     std::this_thread::sleep_for(std::chrono::seconds(3));
     if (controller_sessions.size() == 0) {
-        LOG_INFO("Reconnect to controller now.")
+        LOG_INFO("Reconnect to controller/sdp now.")
         start_connect();
     }
     sess_lock.unlock();
 }
 
 void AgentService::start_connect() {
-    boost::asio::ip::tcp::endpoint ep(boost::asio::ip::address::from_string(controller_address), controller_port);
+    auto new_controller_info = controller->get_new_controller_and_reset();
+    boost::asio::ip::tcp::endpoint ep;
+    if (new_controller_info.port == -1) {
+        LOG_INFO("connect to controller with config from file")
+        ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(controller_address), controller_port);
+    } else {
+        LOG_INFO("connect to sdp by config from controller")
+        ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(new_controller_info.ip),
+                                            new_controller_info.port);
+    }
     controller_sess_ptr controller_sess = std::make_shared<ControllerSession>(io_service, this, controller);
     controller_sess->set_read_timeout(static_cast<unsigned int>(config_mgr.get_item("agent_read_timeout")->get_int()));
     controller_sess->set_write_timeout(static_cast<unsigned int>(config_mgr.get_item("agent_write_timeout")->get_int()));

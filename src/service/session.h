@@ -27,6 +27,10 @@ public:
     virtual bool valid() const = 0;
     // 使Session无效
     virtual void invalid_sess() = 0;
+    // 是Session无效并重连
+    virtual void destory_and_reconnect() {
+        // 如果是Controller类型则不用实现该方法
+    };
 };
 
 typedef std::shared_ptr<Session> sess_ptr;

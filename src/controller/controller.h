@@ -50,7 +50,10 @@ private:
     void handle_po_list_services_detail_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg);
+    void handle_sp_listen_info_sync_req(sess_ptr, msg_ptr msg);
     void handle_ci_add_app(sess_ptr sess, msg_ptr msg);
+    void handle_sa_say_hi_msg(sess_ptr sess, msg_ptr msg);
+    void handle_sa_list_sdp_msg(sess_ptr sess, msg_ptr msg);
     std::mutex g_lock;
     Scheduler scheduler;
     ModelMgrBase *model_mgr;

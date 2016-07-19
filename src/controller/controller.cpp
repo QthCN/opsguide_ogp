@@ -144,10 +144,62 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::SP_SDPPROXY_SERVICE_SYNC_REQ:
             handle_sp_sync_service_msg(sess, msg);
             break;
+            // SDProxy发来的同步其监听信息的请求
+        case MsgType::SP_SDPROXY_LISTEN_INFO_SYNC_REQ:
+            handle_sp_listen_info_sync_req(sess, msg);
+            break;
+
+            // SDAgent发送来的say hi请求
+        case MsgType::SA_SDAGENT_SAY_HI:
+            break;
+            //SDAgent发送来的列出sdp请求
+        case MsgType::SA_SDAGENT_LIST_SDP_REQ:
+            handle_sa_list_sdp_msg(sess, msg);
+            break;
 
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void Controller::handle_sp_listen_info_sync_req(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::SDProxyListenInfoSyncReq listen_info_req;
+    listen_info_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+    auto agent = agents->get_agent_by_sess(sess);
+    if (agent) {
+        auto sdp = std::static_pointer_cast<SDProxyAgent>(agent);
+        sdp->listen_lock.lock();
+        sdp->listen_ip = listen_info_req.ip();
+        sdp->listen_port = listen_info_req.port();
+        sdp->listen_lock.unlock();
+    } else {
+        LOG_ERROR("unknown sdp send listen info sync req")
+    }
+}
+
+void Controller::handle_sa_list_sdp_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::SDEndpointInfoRes sd_endpoint_info_res;
+    auto header = sd_endpoint_info_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    auto sdps = agents->get_agents_by_type(SDP_NAME);
+    for (auto sdp: sdps) {
+        if (sdp->has_sess()) {
+            auto sdp_ = std::static_pointer_cast<SDProxyAgent>(sdp);
+            sdp_->listen_lock.lock();
+            if (sdp_->listen_port != -1) {
+                auto sd = sd_endpoint_info_res.add_sds();
+                sd->set_ip(sdp_->listen_ip);
+                sd->set_port(sdp_->listen_port);
+            }
+            sdp_->listen_lock.unlock();
+        }
+    }
+
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, sd_endpoint_info_res, MsgType::CT_SDAGENT_LIST_SDP_RES);
 }
 
 void Controller::handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg) {

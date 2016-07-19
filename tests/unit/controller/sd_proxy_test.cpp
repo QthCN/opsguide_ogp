@@ -24,15 +24,17 @@ using ::testing::Return;
 class SDProxyTest: public ::testing::Test {
 protected:
     virtual void SetUp() {
+        agents = new NiceMock<MockAgents>();
     }
 
     virtual void TearDown() {
 
     }
-    SDProxy sd_proxy;
+    NiceMock<MockAgents> *agents;
 };
 
 TEST_F(SDProxyTest, handle_ct_sync_service_data_req_with_good_uniq_id) {
+    SDProxy sd_proxy(agents);
     auto sess = std::make_shared<NiceMock<MockSession>>();
     ASSERT_EQ(sd_proxy.get_current_services().uniq_id(), -1);
     ogp_msg::ServiceSyncData service_sync_data;
@@ -53,6 +55,7 @@ TEST_F(SDProxyTest, handle_ct_sync_service_data_req_with_good_uniq_id) {
 }
 
 TEST_F(SDProxyTest, handle_ct_sync_service_data_req_with_bad_uniq_id) {
+    SDProxy sd_proxy(agents);
     auto sess = std::make_shared<NiceMock<MockSession>>();
     ASSERT_EQ(sd_proxy.get_current_services().uniq_id(), -1);
     ogp_msg::ServiceSyncData service_sync_data;

@@ -33,9 +33,20 @@ void SDProxy::associate_sess(sess_ptr sess) {
     auto port = sess->get_port();
     auto controller_address = config_mgr.get_item("proxy_controller_address")->get_str();
     auto controller_port = static_cast<unsigned int>(config_mgr.get_item("proxy_controller_port")->get_int());
+    // 如果是controller sess
     if (address == controller_address && port == controller_port) {
+        LOG_INFO("associate controller_sess")
         g_lock.lock();
         controller_sess = sess;
+        g_lock.unlock();
+    } else {
+        // 如果controller_sess为nullptr,则不能接收这个sess
+        g_lock.lock();
+        if (controller_sess == nullptr) {
+            LOG_WARN("controller_sess is nullptr, so this sda sess can not be accepted. sess info: "
+                     << sess->get_address() << ":" << std::to_string(sess->get_port()))
+            sess->invalid_sess();
+        }
         g_lock.unlock();
     }
 }
@@ -46,14 +57,20 @@ void SDProxy::invalid_sess(sess_ptr sess) {
         && controller_sess->get_address() == sess->get_address()
         && controller_sess->get_port() == sess->get_port()) {
         controller_sess = nullptr;
+        LOG_INFO("invalid controller_sess now")
         cs_lock.lock();
         ssda_id_lock.lock();
         current_services.set_uniq_id(-1);
         sync_sda_current_uniq_id = -1;
+        // 断开所有的sda,因为此时可能是这个sdp出现了问题无法和controller建立联系,如果不断开sda则sda可能会一直获取到错误的信息
+        disconnect_sdas();
         ssda_id_lock.unlock();
         cs_lock.unlock();
     }
     g_lock.unlock();
+}
+
+void SDProxy::disconnect_sdas() {
 }
 
 void SDProxy::handle_msg(sess_ptr sess, msg_ptr msg) {
@@ -101,9 +118,30 @@ void SDProxy::sync_controller() {
         }
         LOG_INFO("sync with controller now.")
         send_simple_msg(controller_sess, MsgType::SP_SDPPROXY_SERVICE_SYNC_REQ);
+        send_listen_info();
         g_lock.unlock();
-        std::this_thread::sleep_for(std::chrono::seconds(300));
+
+        int sleep_t = 0;
+        while (sleep_t <= 300) {
+            g_lock.lock();
+            if (controller_sess == nullptr) {
+                g_lock.unlock();
+                break;
+            }
+            g_lock.unlock();
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            sleep_t += 5;
+        }
     }
+}
+
+void SDProxy::send_listen_info() {
+    ogp_msg::SDProxyListenInfoSyncReq listen_info_req;
+    auto controller_address = config_mgr.get_item("proxy_listen_address")->get_str();
+    auto controller_port = static_cast<unsigned int>(config_mgr.get_item("proxy_listen_port")->get_int());
+    listen_info_req.set_ip(controller_address);
+    listen_info_req.set_port(controller_port);
+    send_msg(controller_sess, listen_info_req, MsgType::SP_SDPROXY_LISTEN_INFO_SYNC_REQ);
 }
 
 void SDProxy::handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg) {

@@ -17,7 +17,42 @@
 #include "service/message.h"
 #include "service/session.h"
 
-class AgentService;
+class ControllerSession;
+
+class AgentService {
+public:
+    typedef std::shared_ptr<ControllerSession> controller_sess_ptr;
+
+    AgentService(unsigned int thread_num, const std::string &controller_address,
+                 unsigned int controller_port, BaseController *controller,
+                 MsgType srv_msg_id_type);
+    void run();
+    void begin_write(controller_sess_ptr controller_sess);
+    void reconnect();
+    void invalid_and_remove_sess(controller_sess_ptr controller_sess);
+
+private:
+    void start_connect();
+    void start_read(controller_sess_ptr controller_sess);
+    void start_write(controller_sess_ptr controller_sess);
+    void handle_read_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
+    void handle_write_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
+    void handle_connect(controller_sess_ptr controller_sess, boost::system::error_code);
+    void handle_read(controller_sess_ptr controller_sess, boost::system::error_code const &error, size_t bytes_transferred);
+    void handle_write(controller_sess_ptr controller_sess, boost::system::error_code const &error, size_t bytes_transferred);
+    size_t read_completion_handler(controller_sess_ptr controller_sess,
+                                   boost::system::error_code const &error,
+                                   size_t bytes_transferred);
+
+    BaseController *controller;
+    unsigned int thread_num;
+    std::string controller_address;
+    unsigned int controller_port;
+    boost::asio::io_service io_service;
+    std::vector<controller_sess_ptr> controller_sessions;
+    std::mutex sess_lock;
+    MsgType srv_msg_id_type;
+};
 
 class ControllerSession: public Session, public std::enable_shared_from_this<ControllerSession> {
 public:
@@ -65,6 +100,10 @@ public:
     unsigned int get_cmsg_length() {return cmsg_length;}
     void set_cmsg_length(unsigned int cmsg_length_) {cmsg_length = cmsg_length_;}
     void invalid_sess();
+    void destory_and_reconnect() {
+        agent_service->invalid_and_remove_sess(shared_from_this());
+        agent_service->reconnect();
+    }
 
 private:
     boost::asio::ip::tcp::socket agent_socket;
@@ -94,39 +133,5 @@ private:
     unsigned int cmsg_length;
 };
 
-class AgentService {
-public:
-    typedef std::shared_ptr<ControllerSession> controller_sess_ptr;
-
-    AgentService(unsigned int thread_num, const std::string &controller_address,
-                 unsigned int controller_port, BaseController *controller,
-                 MsgType srv_msg_id_type);
-    void run();
-    void begin_write(controller_sess_ptr controller_sess);
-
-private:
-    void invalid_and_remove_sess(controller_sess_ptr controller_sess);
-    void start_connect();
-    void reconnect();
-    void start_read(controller_sess_ptr controller_sess);
-    void start_write(controller_sess_ptr controller_sess);
-    void handle_read_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
-    void handle_write_timeout(controller_sess_ptr controller_sess, boost::system::error_code const &error);
-    void handle_connect(controller_sess_ptr controller_sess, boost::system::error_code);
-    void handle_read(controller_sess_ptr controller_sess, boost::system::error_code const &error, size_t bytes_transferred);
-    void handle_write(controller_sess_ptr controller_sess, boost::system::error_code const &error, size_t bytes_transferred);
-    size_t read_completion_handler(controller_sess_ptr controller_sess,
-                                   boost::system::error_code const &error,
-                                   size_t bytes_transferred);
-
-    BaseController *controller;
-    unsigned int thread_num;
-    std::string controller_address;
-    unsigned int controller_port;
-    boost::asio::io_service io_service;
-    std::vector<controller_sess_ptr> controller_sessions;
-    std::mutex sess_lock;
-    MsgType srv_msg_id_type;
-};
 
 #endif //OGP_SERVICE_AGENT_H
