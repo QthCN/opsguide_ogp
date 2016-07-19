@@ -67,14 +67,18 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::DA_DOCKER_HEARTBEAT_REQ:
             // 更新心跳同步时间
             agent = agents->get_agent_by_sess(sess, DA_NAME);
-            agent->set_last_heartbeat_time(std::time(0));
-            sess->send_msg(
-                    std::make_shared<Message>(
-                            MsgType::CT_DOCKER_HEARTBEAT_RES,
-                            new char[0],
-                            0
-                    )
-            );
+            if (agent) {
+                agent->set_last_heartbeat_time(std::time(0));
+                sess->send_msg(
+                        std::make_shared<Message>(
+                                MsgType::CT_DOCKER_HEARTBEAT_RES,
+                                new char[0],
+                                0
+                        )
+                );
+            } else {
+                LOG_ERROR("unknown da's heartbeat req")
+            }
             break;
             // docker agent发来的其当前运行时信息同步请求
         case MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ:

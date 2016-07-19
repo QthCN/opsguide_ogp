@@ -41,6 +41,8 @@ private:
     std::mutex g_lock;
     sess_ptr controller_sess = nullptr;
     void handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg);
+    void handle_sa_say_hi_msg(sess_ptr sess, msg_ptr msg);
+    void handle_sa_heartbeat_sync_msg(sess_ptr sess, msg_ptr msg);
     void disconnect_sdas();
     void send_listen_info();
     ogp_msg::ServiceSyncData current_services;

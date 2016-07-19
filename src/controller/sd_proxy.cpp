@@ -66,6 +66,11 @@ void SDProxy::invalid_sess(sess_ptr sess) {
         disconnect_sdas();
         ssda_id_lock.unlock();
         cs_lock.unlock();
+    } else {
+        auto agent = agents->get_agent_by_sess(sess);
+        if (agent != nullptr) {
+            agent->set_sess(nullptr);
+        }
     }
     g_lock.unlock();
 }
@@ -82,8 +87,62 @@ void SDProxy::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::CT_SDPROXY_SERVICE_DATA_SYNC_REQ:
             handle_ct_sync_service_data_msg(sess, msg);
             break;
+
+            // sda发来的心跳请求
+        case MsgType::SA_SDAGENT_HEARTBEAT_REQ:
+            handle_sa_heartbeat_sync_msg(sess, msg);
+            break;
+            // sda发来的say hi请求
+        case MsgType::SA_SDAGENT_SAY_HI:
+            handle_sa_say_hi_msg(sess, msg);
+            break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
+    }
+}
+
+void SDProxy::handle_sa_say_hi_msg(sess_ptr sess, msg_ptr msg) {
+    g_lock.lock();
+    auto agent = agents->get_agent_by_sess(sess, SDA_NAME);
+    if (agent != nullptr && agent->get_sess() != nullptr) {
+        LOG_ERROR("sda agent say hi, but it already exist. agent key: " << agents->get_key(agent))
+        sess->invalid_sess();
+        g_lock.unlock();
+        return;
+    } else if (agent != nullptr && agent->get_sess() == nullptr) {
+        LOG_INFO("Set session, agent key: " << agents->get_key(agent))
+        agent->set_sess(sess);
+        g_lock.unlock();
+        return;
+    } else if (agent == nullptr) {
+        if (sess->get_address() != "127.0.0.1") {
+            auto sd_agent = std::make_shared<SDAgentAgent>();
+            sd_agent->set_machine_ip(sess->get_address());
+            LOG_INFO("Add sda agent from sess, agent key: " << agents->get_key(sd_agent));
+            agents->add_agent(agents->get_key(sd_agent), sd_agent);
+            sd_agent->set_sess(sess);
+        } else {
+            LOG_ERROR("Agent with ip 127.0.0.1 is invalid.")
+            sess->invalid_sess();
+        }
+        g_lock.unlock();
+    }
+}
+
+void SDProxy::handle_sa_heartbeat_sync_msg(sess_ptr sess, msg_ptr msg) {
+    // 更新心跳同步时间
+    auto agent = agents->get_agent_by_sess(sess, SDA_NAME);
+    if (agent) {
+        agent->set_last_heartbeat_time(std::time(0));
+        sess->send_msg(
+                std::make_shared<Message>(
+                        MsgType::SP_SDAGENT_HEARTBEAT_RES,
+                        new char[0],
+                        0
+                )
+        );
+    } else {
+        LOG_ERROR("unknown sda's heartbeat req")
     }
 }
 

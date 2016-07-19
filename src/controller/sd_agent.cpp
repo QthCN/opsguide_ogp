@@ -69,6 +69,10 @@ void SDAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
             handle_ct_list_sdp_msg(sess, msg);
             break;
 
+            // sdp对心跳请求的回复
+        case MsgType::SP_SDAGENT_HEARTBEAT_RES:
+            break;
+
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
