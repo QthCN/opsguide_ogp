@@ -178,7 +178,7 @@ void SDProxy::sync_sda() {
         }
         sync_sda_current_uniq_id = current_services.uniq_id();
         sda_uid = sync_sda_current_uniq_id;
-        data_to_send = current_services;
+        data_to_send.CopyFrom(current_services);
         ssda_id_lock.unlock();
         cs_lock.unlock();
 
@@ -248,7 +248,7 @@ void SDProxy::handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg) {
         // 比较controller同步来的信息是否和目前的信息存在差异,如果存在差异则进行同步,否则不采取操作
         if (sd_utils.check_diff(current_services, service_sync_data)) {
             // controller同步来的数据和本地的缓存不同,因此需要通知SDA
-            current_services = service_sync_data;
+            current_services.CopyFrom(service_sync_data);
         } else {
             // controller同步来的数据和本地相同,只需要更新id
             current_services.set_uniq_id(service_sync_data.uniq_id());

@@ -10,6 +10,7 @@
 #include <queue>
 
 #include "controller/base.h"
+#include "controller/sd_utils.h"
 #include "ogp_msg.pb.h"
 #include "service/message.h"
 #include "service/session.h"
@@ -25,6 +26,8 @@ public:
     void send_heartbeat();
     // 与sdp之间的状态同步线程
     void sync();
+    // haproxy的状态维护现场
+    void haproxy_sync();
     void invalid_sess(sess_ptr sess);
 
 private:
@@ -34,8 +37,9 @@ private:
     sess_ptr controller_sess = nullptr;
     std::mutex agent_lock;
     std::mt19937 rng;
-    int current_sync_id = -1;
-    std::mutex current_sync_id_lock;
+    ogp_msg::ServiceSyncData current_services;
+    SDUtils sd_utils;
+    bool do_haproxy_sync;
 };
 
 #endif //OGP_CONTROLLER_SD_AGENT_H

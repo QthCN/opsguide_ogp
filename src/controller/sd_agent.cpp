@@ -16,15 +16,22 @@
 
 void SDAgent::init() {
     LOG_INFO("SDAgent begin initialization now.")
+
     // 心跳线程
     std::thread t([this](){send_heartbeat();});
     add_thread(std::move(t));
     // sdp状态同步线程
     std::thread t2([this](){sync();});
     add_thread(std::move(t2));
+    // haproxy状态同步线程
+    std::thread t3([this](){haproxy_sync();});
+    add_thread(std::move(t3));
 
     std::random_device rd;
     rng = std::mt19937(rd());
+
+    current_services.set_uniq_id(-1);
+    do_haproxy_sync = false;
 }
 
 void SDAgent::associate_sess(sess_ptr sess) {
@@ -57,11 +64,9 @@ void SDAgent::associate_sess(sess_ptr sess) {
 
 void SDAgent::invalid_sess(sess_ptr sess) {
     agent_lock.lock();
-    current_sync_id_lock.lock();
     controller_sess = nullptr;
     sdp_sess = nullptr;
-    current_sync_id = -1;
-    current_sync_id_lock.unlock();
+    current_services.set_uniq_id(-1);
     agent_lock.unlock();
 }
 
@@ -85,10 +90,45 @@ void SDAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
     }
 }
 
+void SDAgent::haproxy_sync() {
+    while (true) {
+        agent_lock.lock();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (!do_haproxy_sync) {
+            agent_lock.unlock();
+            continue;
+        }
+
+        ogp_msg::ServiceSyncData services_data;
+        services_data.CopyFrom(current_services);
+        do_haproxy_sync = false;
+        agent_lock.unlock();
+
+        LOG_INFO("sync haproxy now")
+    }
+}
+
 void SDAgent::handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg) {
     ogp_msg::ServiceSyncData service_sync_data;
     service_sync_data.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
     LOG_INFO("get service data from sdp, uniq_id in msg is: " << std::to_string(service_sync_data.uniq_id()));
+    // 比较sdp传递来的数据的id及内容,如果有更新的必要则更新haproxy
+    agent_lock.lock();
+    if (current_services.uniq_id()>=service_sync_data.uniq_id()) {
+        LOG_INFO("current id larger than uniq id from sdp, no action taken.")
+        agent_lock.unlock();
+        return;
+    }
+    if (sd_utils.check_diff(current_services, service_sync_data)) {
+        // sdp同步来的数据和本地的缓存不同,因此需要进行service的更新操作
+        current_services.CopyFrom(service_sync_data);
+        do_haproxy_sync = true;
+    } else {
+        // sdp同步来的数据和本地相同,只需要更新id
+        LOG_INFO("same content from sdp, update id only")
+        current_services.set_uniq_id(service_sync_data.uniq_id());
+    }
+    agent_lock.unlock();
 }
 
 void SDAgent::send_heartbeat() {

@@ -123,7 +123,9 @@ set(SD_AGENT_SOURCE_FILES
         src/controller/utils.cpp
         src/controller/utils.h
         src/service/agent.h
-        src/service/agent.cpp)
+        src/service/agent.cpp
+        src/controller/sd_utils.h
+        src/controller/sd_utils.cpp)
 add_executable(ogp-sd-agent src/cli/sd_agent.cpp ${SD_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders} src/cli/sd_agent.cpp)
 target_link_libraries(ogp-sd-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
