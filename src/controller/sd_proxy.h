@@ -34,12 +34,14 @@ public:
     void send_heartbeat();
     // SDAgent同步线程
     void sync_sda();
+    void do_sync_sda(int sda_uid, ogp_msg::ServiceSyncData &service_data);
     ogp_msg::ServiceSyncData get_current_services() {return current_services;}
     void sync_controller();
 
 private:
     std::mutex g_lock;
     sess_ptr controller_sess = nullptr;
+    void handle_sa_sync_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_ct_sync_service_data_msg(sess_ptr sess, msg_ptr msg);
     void handle_sa_say_hi_msg(sess_ptr sess, msg_ptr msg);
     void handle_sa_heartbeat_sync_msg(sess_ptr sess, msg_ptr msg);
@@ -51,6 +53,7 @@ private:
     std::mutex ssda_id_lock;
     SDUtils sd_utils;
     AgentsBase *agents;
+    std::mutex sda_sync_lock;
 };
 
 #endif //OGP_CONTROLLER_SD_PROXY_H

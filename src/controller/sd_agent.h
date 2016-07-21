@@ -29,10 +29,13 @@ public:
 
 private:
     void handle_ct_list_sdp_msg(sess_ptr sess, msg_ptr msg);
+    void handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg);
     sess_ptr sdp_sess = nullptr;
     sess_ptr controller_sess = nullptr;
     std::mutex agent_lock;
     std::mt19937 rng;
+    int current_sync_id = -1;
+    std::mutex current_sync_id_lock;
 };
 
 #endif //OGP_CONTROLLER_SD_AGENT_H

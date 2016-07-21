@@ -57,8 +57,11 @@ void SDAgent::associate_sess(sess_ptr sess) {
 
 void SDAgent::invalid_sess(sess_ptr sess) {
     agent_lock.lock();
+    current_sync_id_lock.lock();
     controller_sess = nullptr;
     sdp_sess = nullptr;
+    current_sync_id = -1;
+    current_sync_id_lock.unlock();
     agent_lock.unlock();
 }
 
@@ -72,10 +75,20 @@ void SDAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
             // sdp对心跳请求的回复
         case MsgType::SP_SDAGENT_HEARTBEAT_RES:
             break;
+            // sdp发来的最新的service信息
+        case MsgType::SP_SDAGENT_SYNC_SERVICE:
+            handle_sp_sync_service_msg(sess, msg);
+            break;
 
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void SDAgent::handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::ServiceSyncData service_sync_data;
+    service_sync_data.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+    LOG_INFO("get service data from sdp, uniq_id in msg is: " << std::to_string(service_sync_data.uniq_id()));
 }
 
 void SDAgent::send_heartbeat() {
@@ -99,7 +112,30 @@ void SDAgent::send_heartbeat() {
 }
 
 void SDAgent::sync() {
+    while (true) {
+        agent_lock.lock();
+        if (sdp_sess == nullptr) {
+            agent_lock.unlock();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            continue;
+        } else {
+            send_simple_msg(sdp_sess, MsgType::SA_SDAGENT_SYNC_SERVICE_REQ);
+            agent_lock.unlock();
+        }
 
+        int sleep_t = 0;
+        while (sleep_t <= 300) {
+            agent_lock.lock();
+            if (sdp_sess == nullptr) {
+                agent_lock.unlock();
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                break;
+            }
+            agent_lock.unlock();
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            sleep_t += 5;
+        }
+    }
 }
 
 void SDAgent::handle_ct_list_sdp_msg(sess_ptr sess, msg_ptr msg) {

@@ -104,9 +104,19 @@ void SDProxy::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::SA_SDAGENT_SAY_HI:
             handle_sa_say_hi_msg(sess, msg);
             break;
+            // sda发来的请求同步service的请求
+        case MsgType::SA_SDAGENT_SYNC_SERVICE_REQ:
+            handle_sa_sync_service_msg(sess, msg);
+            break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
     }
+}
+
+void SDProxy::handle_sa_sync_service_msg(sess_ptr sess, msg_ptr msg) {
+    cs_lock.lock();
+    send_msg(sess, current_services, MsgType::SP_SDAGENT_SYNC_SERVICE);
+    cs_lock.unlock();
 }
 
 void SDProxy::handle_sa_say_hi_msg(sess_ptr sess, msg_ptr msg) {
@@ -155,6 +165,8 @@ void SDProxy::handle_sa_heartbeat_sync_msg(sess_ptr sess, msg_ptr msg) {
 }
 
 void SDProxy::sync_sda() {
+    ogp_msg::ServiceSyncData data_to_send;
+    int sda_uid = -1;
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         cs_lock.lock();
@@ -165,12 +177,23 @@ void SDProxy::sync_sda() {
             continue;
         }
         sync_sda_current_uniq_id = current_services.uniq_id();
-        // TODO(tianhuan): 拷贝一份current_services
+        sda_uid = sync_sda_current_uniq_id;
+        data_to_send = current_services;
         ssda_id_lock.unlock();
         cs_lock.unlock();
 
-        // TODO(tianhuan): 向SDA广播信息
+        do_sync_sda(sda_uid, data_to_send);
     }
+}
+
+void SDProxy::do_sync_sda(int sda_uid, ogp_msg::ServiceSyncData &service_data) {
+    auto sda_agents = agents->get_agents_by_type(SDA_NAME);
+    service_data.set_uniq_id(sda_uid);
+    sda_sync_lock.lock();
+    for (auto a: sda_agents) {
+        send_msg(a->get_sess(), service_data, MsgType::SP_SDAGENT_SYNC_SERVICE);
+    }
+    sda_sync_lock.unlock();
 }
 
 void SDProxy::sync_controller() {
