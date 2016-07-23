@@ -125,7 +125,9 @@ set(SD_AGENT_SOURCE_FILES
         src/service/agent.h
         src/service/agent.cpp
         src/controller/sd_utils.h
-        src/controller/sd_utils.cpp)
+        src/controller/sd_utils.cpp
+        src/common/haproxy.h
+        src/common/haproxy.cpp)
 add_executable(ogp-sd-agent src/cli/sd_agent.cpp ${SD_AGENT_SOURCE_FILES} ${ProtoSources} ${ProtoHeaders} src/cli/sd_agent.cpp)
 target_link_libraries(ogp-sd-agent ${Boost_LIBRARIES} ${LIBRESTCLIENT_CPP_LIBRARIES} ${PROTOBUF_LIBRARY} ${CURL_LIBRARIES})
 
@@ -148,7 +150,8 @@ set(OGP_TEST_SOURCE_FILES
         tests/unit/controller/service_mock.h
         tests/unit/controller/service_test.cpp
         tests/unit/controller/sd_proxy_test.cpp
-        tests/unit/controller/sd_utils_test.cpp)
+        tests/unit/controller/sd_utils_test.cpp
+        tests/unit/common/haproxy_test.cpp)
 add_executable(ogp_test ${OGP_TEST_SOURCE_FILES}
                         ${ProtoSources}
                         ${ProtoHeaders}
@@ -181,7 +184,12 @@ add_executable(ogp_test ${OGP_TEST_SOURCE_FILES}
                         src/controller/sd_proxy.cpp
                         src/controller/sd_proxy.h
                         src/controller/sd_utils.cpp
-                        src/controller/sd_utils.h)
+                        src/controller/sd_utils.h
+                        src/common/haproxy.h
+                        src/common/haproxy.cpp
+                        src/common/haproxy.h
+                        src/common/haproxy.cpp
+                        src/controller/service.h)
 target_link_libraries(ogp_test ${GTEST_BOTH_LIBRARIES})
 target_link_libraries(ogp_test ${Boost_LIBRARIES})
 target_link_libraries(ogp_test ${LIBRESTCLIENT_CPP_LIBRARIES})
