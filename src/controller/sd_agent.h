@@ -9,6 +9,8 @@
 #include <random>
 #include <queue>
 
+#include "common/config.h"
+#include "common/haproxy.h"
 #include "controller/base.h"
 #include "controller/sd_utils.h"
 #include "ogp_msg.pb.h"
@@ -17,8 +19,14 @@
 
 class SDAgent: public BaseController {
 public:
-    SDAgent(){ };
-    ~SDAgent() { }
+    SDAgent(){
+        haproxy_helper = new HAProxyHelper(config_mgr.get_item("haproxy_cfg_file")->get_str(),
+                                           config_mgr.get_item("haproxy_bin")->get_str(),
+                                           config_mgr.get_item("haproxy_pid_file")->get_str());
+    };
+    ~SDAgent() {
+        delete haproxy_helper;
+    }
     void init();
     void associate_sess(sess_ptr sess);
     void handle_msg(sess_ptr sess, msg_ptr msg);
@@ -40,6 +48,7 @@ private:
     ogp_msg::ServiceSyncData current_services;
     SDUtils sd_utils;
     bool do_haproxy_sync;
+    HAProxyHelper *haproxy_helper;
 };
 
 #endif //OGP_CONTROLLER_SD_AGENT_H

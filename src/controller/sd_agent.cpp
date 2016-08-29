@@ -105,6 +105,23 @@ void SDAgent::haproxy_sync() {
         agent_lock.unlock();
 
         LOG_INFO("sync haproxy now")
+        std::string current_cfg_content = haproxy_helper->get_config_file_content();
+        std::string target_cfg_content = haproxy_helper->generate_config_file(services_data);
+
+        LOG_INFO("target cfg content:")
+        LOG_INFO(target_cfg_content)
+        LOG_INFO("current cfg content")
+        LOG_INFO(current_cfg_content)
+
+        if (current_cfg_content != target_cfg_content) {
+            LOG_INFO("update config file content from target config content")
+            haproxy_helper->update_config_file_content(target_cfg_content);
+            LOG_INFO("try to restart haproxy now")
+            haproxy_helper->restart_haproxy_service();
+            LOG_INFO("restart haproxy finished")
+        } else {
+            LOG_INFO("local config file's content is same as target config content, no action will be taken")
+        }
     }
 }
 
@@ -120,6 +137,7 @@ void SDAgent::handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg) {
         return;
     }
     if (sd_utils.check_diff(current_services, service_sync_data)) {
+        LOG_INFO("check_diff found difference")
         // sdp同步来的数据和本地的缓存不同,因此需要进行service的更新操作
         current_services.CopyFrom(service_sync_data);
         do_haproxy_sync = true;
