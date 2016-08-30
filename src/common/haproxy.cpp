@@ -26,9 +26,9 @@ std::string HAProxyHelper::generate_config_file(ogp_msg::ServiceSyncData &servic
     generated_config_file += "  option redispatch\n";
     generated_config_file += "  option abortonclose\n";
     generated_config_file += "  maxconn 4096\n";
-    generated_config_file += "  timeout connect 5000ms\n";
-    generated_config_file += "  timeout client 30000ms\n";
-    generated_config_file += "  timeout server 30000ms\n";
+    generated_config_file += "  timeout connect 5000000ms\n";
+    generated_config_file += "  timeout client 30000000ms\n";
+    generated_config_file += "  timeout server 30000000ms\n";
     generated_config_file += "  log 127.0.0.1 local0 err\n";
     generated_config_file += "\n";
 

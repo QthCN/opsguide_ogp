@@ -56,9 +56,9 @@ TEST(HAProxyHelperTest, test_generate_config_files) {
     target_config_file_content += "  option redispatch\n";
     target_config_file_content += "  option abortonclose\n";
     target_config_file_content += "  maxconn 4096\n";
-    target_config_file_content += "  timeout connect 5000ms\n";
-    target_config_file_content += "  timeout client 30000ms\n";
-    target_config_file_content += "  timeout server 30000ms\n";
+    target_config_file_content += "  timeout connect 5000000ms\n";
+    target_config_file_content += "  timeout client 30000000ms\n";
+    target_config_file_content += "  timeout server 30000000ms\n";
     target_config_file_content += "  log 127.0.0.1 local0 err\n";
     target_config_file_content += "\n";
     target_config_file_content += "listen app_name_100\n";
