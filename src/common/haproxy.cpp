@@ -16,7 +16,7 @@ std::string HAProxyHelper::generate_config_file(ogp_msg::ServiceSyncData &servic
     generated_config_file += "  daemon\n";
     generated_config_file += "  nbproc 2\n";
     generated_config_file += "  pidfile ";
-    generated_config_file += config_mgr.get_item("haproxy_pid_file")->get_str();
+    generated_config_file += pid_file;
     generated_config_file += "\n";
     generated_config_file += "\n";
     // 写入默认信息

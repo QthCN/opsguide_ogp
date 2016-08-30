@@ -17,6 +17,9 @@
 void SDAgent::init() {
     LOG_INFO("SDAgent begin initialization now.")
 
+    current_services.set_uniq_id(-1);
+    do_haproxy_sync = false;
+
     // 心跳线程
     std::thread t([this](){send_heartbeat();});
     add_thread(std::move(t));
@@ -29,9 +32,6 @@ void SDAgent::init() {
 
     std::random_device rd;
     rng = std::mt19937(rd());
-
-    current_services.set_uniq_id(-1);
-    do_haproxy_sync = false;
 }
 
 void SDAgent::associate_sess(sess_ptr sess) {
@@ -92,8 +92,8 @@ void SDAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
 
 void SDAgent::haproxy_sync() {
     while (true) {
-        agent_lock.lock();
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        agent_lock.lock();
         if (!do_haproxy_sync) {
             agent_lock.unlock();
             continue;

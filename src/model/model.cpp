@@ -465,9 +465,9 @@ std::vector<service_model_ptr> ModelMgr::list_services() {
                 if (res->getInt("service_port") == -1) {
                     s->set_private_port(-1);
                 } else {
-                    s->set_private_port(res->getInt("service_port"));
+                    s->set_private_port(res->getInt("private_port"));
                 }
-                s->set_service_port(res->getInt("private_port"));
+                s->set_service_port(res->getInt("service_port"));
             }
         }
         SQLQUERY_CLEAR_RESOURCE

@@ -16,7 +16,7 @@ using ::testing::SaveArg;
 using ::testing::Return;
 
 TEST(HAProxyHelperTest, test_generate_config_files) {
-    auto haproxy = HAProxyHelper("test.cfg");
+    auto haproxy = HAProxyHelper("test.cfg", "", "/var/run/haproxy.pid");
     ogp_msg::ServiceSyncData services_info;
 
     services_info.set_uniq_id(100);

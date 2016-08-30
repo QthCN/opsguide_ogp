@@ -162,6 +162,7 @@ public:
                         auto service_sync_item = service_sync_info->add_items();
                         service_sync_item->set_ma_ip(ma_ip);
                         service_sync_item->set_public_port(mapping_port);
+                        mapping_port = -1;
                     }
                 }
                 da->get_applications_lock().unlock();
