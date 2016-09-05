@@ -300,3 +300,29 @@ message SDProxyListenInfoSyncReq {
     required string ip = 1;
     required int32 port = 2;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+message AppCFGDetail {
+    required int32 app_id = 1;
+    required string path = 2;
+    required string content = 3;
+    required string md5 = 4;
+    required string app_name = 5;
+}
+
+message PortalUpdateAppCFGReq {
+    required int32 app_id = 1;
+    required string path = 2;
+    required string content = 3;
+}
+
+message PortalUpdateAppCFGRes {
+    required MsgHeader header = 1;
+}
+
+// 该message会在以下情况下发送:1. DA主动请求同步,此时单独发送给请求的DA 2. Portal修改了CFG,则广播该消息给所有DA 3. Portal请求配置列表
+message DASyncAppsCFGRes {
+    required MsgHeader header = 1;
+    repeated AppCFGDetail cfgs = 2;
+}

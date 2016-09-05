@@ -8,10 +8,16 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+
+#include "boost/filesystem.hpp"
 
 #include "common/config.h"
 #include "common/docker_client.h"
 #include "common/log.h"
+#include "common/md5.h"
 #include "controller/utils.h"
 #include "ogp_msg.pb.h"
 #include "third/json/json.hpp"
@@ -41,6 +47,9 @@ void DockerAgent::associate_sess(sess_ptr sess) {
         controller_sess = sess;
         agent_lock.unlock();
     }
+
+    // 连接上controller后,主动发起app cfg同步请求
+    sync_appcfgs();
 }
 
 void DockerAgent::invalid_sess(sess_ptr sess) {
@@ -200,6 +209,10 @@ void DockerAgent::handle_msg(sess_ptr sess, msg_ptr msg) {
         // controller发来的状态同步信息请求
         case MsgType::CT_DOCKER_RUNTIME_INFO_SYNC_REQ:
             handle_ct_sync_req_msg(sess, msg);
+            break;
+        // controller发来的app cfg同步请求
+        case MsgType::CT_DOCKER_SYNC_APP_CFG_RES:
+            handle_ct_sync_app_cfg_msg(sess, msg);
             break;
         default:
             LOG_ERROR("Unknown msg type: " << static_cast<unsigned int>(msg->get_msg_type()));
@@ -370,5 +383,98 @@ void DockerAgent::handle_ct_sync_msg(sess_ptr sess, msg_ptr msg) {
     for (auto &c: containers_to_start) {
         auto action = std::make_shared<DAAction>(c, DAActionType::START_CONTAINER);
         add_action(action);
+    }
+}
+
+void DockerAgent::sync_appcfgs() {
+    agent_lock.lock();
+    if (controller_sess != nullptr) {
+        controller_sess->send_msg(
+                std::make_shared<Message>(
+                        MsgType::DA_DOCKER_SYNC_APP_CFG_REQ,
+                        new char[0],
+                        0
+                )
+        );
+    } else {
+        LOG_WARN("controller_sess is nullptr, sync app cfg msg not send.")
+    }
+    agent_lock.unlock();
+}
+
+void DockerAgent::handle_ct_sync_app_cfg_msg(sess_ptr sess, msg_ptr msg) {
+    MD5 md5_client;
+    ogp_msg::DASyncAppsCFGRes da_sync_appscfg_res;
+    da_sync_appscfg_res.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+
+    for (auto cfg: da_sync_appscfg_res.cfgs()) {
+        // 从cfg获取到path,计算path对应文件的md5,如果md5不同则进行更新
+        std::string path = cfg.path();
+        std::string md5 = cfg.md5();
+        std::string content = cfg.content();
+        std::string app_name = cfg.app_name();
+        auto app_id = cfg.app_id();
+        // 获取本地文件名
+        std::string cfg_file_name = app_name + ".conf";
+        std::string cfg_file_full_name = path + "/" + cfg_file_name;
+
+        if (content == "") {
+            LOG_INFO("content is empty, ignore it")
+            continue;
+        }
+
+        if (path == "") {
+            LOG_INFO("path is empty, ignore it")
+        }
+
+        LOG_INFO("update cfg file, target file info: ")
+        LOG_INFO("file: " + cfg_file_name + " app_name: " + app_name + " path: " + path + " md5:" + md5)
+
+        bool need_update = false;
+        // 读取path对应的本地文件
+        std::ifstream t(cfg_file_full_name);
+        if (!t.is_open()) {
+            LOG_INFO("file not exist, so a new cfg file will be created")
+            need_update = true;
+        } else {
+            std::stringstream buffer;
+            buffer << t.rdbuf();
+            std::string current_content = buffer.str();
+            std::string current_md5 = md5_client.digestString(current_content.c_str());
+            LOG_INFO("current_md5: " + current_md5)
+            LOG_INFO("target__md5: " + md5)
+
+            if (md5 != current_md5) {
+                LOG_INFO("md5s are different, so a new cfg file will be created")
+                need_update = true;
+            } else {
+                LOG_INFO("same md5, no action will be taken")
+            }
+        }
+
+        if (need_update) {
+            // 判断目录是否存在,不存在则创建
+            boost::filesystem::path dir(path);
+            if(!(boost::filesystem::exists(dir))){
+                LOG_INFO(path + " not exist, create it.")
+                if (boost::filesystem::create_directories(dir)) {
+                    LOG_INFO("path create successful")
+                } else {
+                    LOG_INFO("path create failed")
+                }
+            }
+
+            // 写入文件
+            std::ofstream cf(cfg_file_full_name, std::ios::out | std::ios::trunc);
+            if (!cf.good()) {
+                LOG_ERROR("can not write content into: " + cfg_file_full_name)
+                cf.close();
+            } else {
+                cf << content;
+                cf.close();
+                LOG_INFO("update cfg for " + cfg_file_full_name + " successful")
+            }
+        }
+
     }
 }

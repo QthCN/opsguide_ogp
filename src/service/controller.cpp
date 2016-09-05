@@ -96,6 +96,7 @@ ControllerService::ControllerService(unsigned int thread_num, const std::string 
                                                                  listen_address(listen_address),
                                                                  listen_port(listen_port),
                                                                  controller(controller) {
+    // controller的init放在实际的服务监听之前,这样当有agent连接上来的时候,能确保必要的数据已经初始化完成
     controller->init();
 
     if (listen_address == "0.0.0.0") {

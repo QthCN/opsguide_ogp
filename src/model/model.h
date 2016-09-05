@@ -458,6 +458,68 @@ private:
 };
 typedef std::shared_ptr<ServiceModel> service_model_ptr;
 
+class APPCfgModel {
+public:
+    APPCfgModel() {}
+
+    int get_id() const {
+        return id;
+    }
+
+    void set_id(int id) {
+        APPCfgModel::id = id;
+    }
+
+    int get_app_id() const {
+        return app_id;
+    }
+
+    void set_app_id(int app_id) {
+        APPCfgModel::app_id = app_id;
+    }
+
+    const std::string &get_path() const {
+        return path;
+    }
+
+    void set_path(const std::string &path) {
+        APPCfgModel::path = path;
+    }
+
+    std::string get_content() const {
+        return content;
+    }
+
+    void set_content(const std::string &content) {
+        APPCfgModel::content = content;
+    }
+
+    const std::string &get_md5() const {
+        return md5;
+    }
+
+    void set_md5(const std::string &md5) {
+        APPCfgModel::md5 = md5;
+    }
+
+    std::string get_app_name() {
+        return app_name;
+    }
+
+    void set_app_name(const std::string &app_name) {
+        APPCfgModel::app_name = app_name;
+    }
+
+private:
+    int id;
+    int app_id;
+    std::string path;
+    std::string content;
+    std::string md5;
+    std::string app_name;
+};
+typedef std::shared_ptr<APPCfgModel> appcfg_model_ptr;
+
 class ModelMgrBase {
 public:
     virtual ~ModelMgrBase() {}
@@ -479,6 +541,8 @@ public:
     virtual void add_port_service(std::string service_type, int app_id, int service_port, int private_port,
                                   int *service_id) = 0;
     virtual void remove_service(int service_id) = 0;
+    virtual std::vector<appcfg_model_ptr> get_app_cfgs() = 0;
+    virtual void update_appcfg(int app_id, std::string path, std::string content) = 0;
     virtual std::vector<service_model_ptr> list_services() = 0;
 };
 
@@ -522,6 +586,8 @@ public:
                           int *service_id);
     void remove_service(int service_id);
     std::vector<service_model_ptr> list_services();
+    std::vector<appcfg_model_ptr> get_app_cfgs();
+    void update_appcfg(int app_id, std::string path, std::string content);
 
 private:
     std::string mysql_address;

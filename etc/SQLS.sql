@@ -95,3 +95,12 @@ CREATE TABLE SERVICE_PORTSERVICE (
     PRIMARY KEY (id),
     KEY (service_id)
 );
+
+CREATE TABLE CFG (
+    id INT NOT NULL AUTO_INCREMENT,
+    app_id INT NOT NULL,
+    path VARCHAR(1024) NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (id),
+    KEY (app_id)
+);

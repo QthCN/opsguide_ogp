@@ -6,6 +6,7 @@
 #define OG_CONTROLLER_CONTROLLER_H
 
 #include <mutex>
+#include <vector>
 
 #include "controller/agents.h"
 #include "controller/applications.h"
@@ -39,6 +40,7 @@ public:
 private:
     void handle_da_sync_msg(sess_ptr sess, msg_ptr msg);
     void handle_da_say_hi_msg(sess_ptr sess, msg_ptr msg);
+    void handle_da_sync_appcfg_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_get_apps_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_get_agents_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_publish_app_msg(sess_ptr sess, msg_ptr msg);
@@ -48,18 +50,23 @@ private:
     void handle_po_del_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_list_services_msg(sess_ptr sess, msg_ptr msg);
     void handle_po_list_services_detail_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_list_appcfg_msg(sess_ptr sess, msg_ptr msg);
+    void handle_po_update_appcfg_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_sync_service_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_say_hi_msg(sess_ptr sess, msg_ptr msg);
     void handle_sp_listen_info_sync_req(sess_ptr, msg_ptr msg);
     void handle_ci_add_app(sess_ptr sess, msg_ptr msg);
-    void handle_sa_say_hi_msg(sess_ptr sess, msg_ptr msg);
     void handle_sa_list_sdp_msg(sess_ptr sess, msg_ptr msg);
+    void init_appcfgs();
+    void update_appcfg(int app_id, std::string path, std::string content);
     std::mutex g_lock;
     Scheduler scheduler;
     ModelMgrBase *model_mgr;
     AgentsBase *agents;
     ApplicationsBase *applications;
     ServicesBase *services;
+    std::mutex appcfgs_lock;
+    std::vector<appcfg_model_ptr> appcfgs;
 };
 
 #endif //OG_CONTROLLER_CONTROLLER_H

@@ -82,8 +82,10 @@ public:
 private:
     sess_ptr controller_sess = nullptr;
     std::mutex agent_lock;
+    void sync_appcfgs();
     void handle_ct_sync_msg(sess_ptr sess, msg_ptr msg);
     void handle_ct_sync_req_msg(sess_ptr sess, msg_ptr msg);
+    void handle_ct_sync_app_cfg_msg(sess_ptr sess, msg_ptr msg);
     ogp_msg::DockerRuntimeInfo get_docker_runtime_info_msg();
     std::queue<daaction_ptr> actions_queue;
     std::mutex actions_queue_lock;

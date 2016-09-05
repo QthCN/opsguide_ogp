@@ -11,6 +11,7 @@
 #include "cppconn/statement.h"
 
 #include "common/log.h"
+#include "common/md5.h"
 
 #define SQLQUERY_BEGIN      sql::Connection *conn = nullptr;\
                             conn = get_conn();\
@@ -520,5 +521,58 @@ void ModelMgr::add_port_service(std::string service_type, int app_id, int servic
 
         stmt->execute("UNLOCK TABLES");
         SQLQUERY_CLEAR_RESOURCE
+    SQLQUERY_END
+}
+
+std::vector<appcfg_model_ptr> ModelMgr::get_app_cfgs() {
+    MD5 md5;
+    SQLQUERY_BEGIN
+
+        stmt = conn->createStatement();
+        res = stmt->executeQuery("SELECT CFG.id, CFG.app_id, CFG.path, CFG.content, APP_LIST.name FROM CFG, APP_LIST "
+                                         "WHERE CFG.app_id=APP_LIST.id");
+        std::vector<appcfg_model_ptr> appcfgs;
+        while (res->next()) {
+            auto appcfg_model = std::make_shared<APPCfgModel>();
+            appcfg_model->set_id(res->getInt("id"));
+            appcfg_model->set_app_id(res->getInt("app_id"));
+            appcfg_model->set_path(res->getString("path"));
+            appcfg_model->set_content(res->getString("content"));
+            appcfg_model->set_app_name(res->getString("name"));
+            std::string content = appcfg_model->get_content();
+            appcfg_model->set_md5(md5.digestString(content.c_str()));
+            appcfgs.push_back(appcfg_model);
+        }
+        SQLQUERY_CLEAR_RESOURCE
+        return appcfgs;
+    SQLQUERY_END
+}
+
+void ModelMgr::update_appcfg(int app_id, std::string path, std::string content) {
+    SQLQUERY_BEGIN
+
+        pstmt = conn->prepareStatement("SELECT id FROM CFG WHERE app_id=?");
+        pstmt->setInt(1, app_id);
+        res = pstmt->executeQuery();
+        if (res->next() == false) {
+            // CFG中没有该app的配置信息,则插入一个空记录
+            delete_ptr(&pstmt);
+            delete_ptr(&res);
+            pstmt = conn->prepareStatement("INSERT INTO CFG(app_id, path, content) VALUES(?, '', '')");
+            pstmt->setInt(1, app_id);
+            pstmt->execute();
+            delete_ptr(&pstmt);
+        } else {
+            delete_ptr(&pstmt);
+            delete_ptr(&res);
+        }
+
+        pstmt = conn->prepareStatement("UPDATE CFG SET path=?, content=? WHERE app_id=?");
+        pstmt->setString(1, path);
+        pstmt->setString(2, content);
+        pstmt->setInt(3, app_id);
+        pstmt->execute();
+        SQLQUERY_CLEAR_RESOURCE
+
     SQLQUERY_END
 }

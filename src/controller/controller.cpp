@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "common/log.h"
+#include "common/md5.h"
 #include "controller/agents.h"
 #include "controller/applications.h"
 #include "common/config.h"
@@ -25,6 +26,8 @@ void Controller::init() {
     services->init(agents, applications, model_mgr);
     LOG_INFO("Initialize scheduler.")
     scheduler.init();
+    LOG_INFO("Initialize appcfgs.")
+    init_appcfgs();
 
     LOG_INFO("Controller initialization finished.")
 
@@ -43,6 +46,13 @@ void Controller::init() {
 
 void Controller::associate_sess(sess_ptr sess) {
 
+}
+
+void Controller::init_appcfgs() {
+    LOG_INFO("Init appcfgs from DB")
+    appcfgs_lock.lock();
+    appcfgs = model_mgr->get_app_cfgs();
+    appcfgs_lock.unlock();
 }
 
 void Controller::invalid_sess(sess_ptr sess) {
@@ -84,6 +94,10 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
         case MsgType::DA_DOCKER_RUNTIME_INFO_SYNC_REQ:
             handle_da_sync_msg(sess, msg);
             break;
+            // docker agent发来的获取app cfg信息的请求
+        case MsgType::DA_DOCKER_SYNC_APP_CFG_REQ:
+            handle_da_sync_appcfg_msg(sess, msg);
+            break;
 
             // portal发来的获取app列表的请求
         case MsgType::PO_PORTAL_GET_APPS_REQ:
@@ -120,6 +134,14 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
             // portal发来的列出services详细信息的请求
         case MsgType::PO_PORTAL_LIST_SERVICES_DETAIL_REQ:
             handle_po_list_services_detail_msg(sess, msg);
+            break;
+            // portal发来的列出appcfg的请求
+        case MsgType::PO_PORTAL_LIST_APP_CFG_REQ:
+            handle_po_list_appcfg_msg(sess, msg);
+            break;
+            // portal发来的更新appcfg的请求
+        case MsgType::PO_PORTAL_UPDATE_APP_CFG_REQ:
+            handle_po_update_appcfg_msg(sess, msg);
             break;
 
             // cli发来的创建app请求
@@ -166,6 +188,107 @@ void Controller::handle_msg(sess_ptr sess, msg_ptr msg) {
     }
 }
 
+void Controller::handle_po_update_appcfg_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::PortalUpdateAppCFGReq po_update_appcfg_req;
+    po_update_appcfg_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
+    ogp_msg::PortalUpdateAppCFGRes po_update_appcfg_res;
+    auto header = po_update_appcfg_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    try {
+        model_mgr->update_appcfg(po_update_appcfg_req.app_id(),
+                                 po_update_appcfg_req.path(),
+                                 po_update_appcfg_req.content());
+    } catch (sql::SQLException &e) {
+        rc = 1;
+        ret_msg = e.what();
+    }
+
+    if (rc == 0) {
+        // 更新内存中的appcfg
+        update_appcfg(po_update_appcfg_req.app_id(),
+                      po_update_appcfg_req.path(),
+                      po_update_appcfg_req.content());
+    }
+
+    if (rc == 0) {
+        // 获取最新的appcfg信息
+        ogp_msg::DASyncAppsCFGRes da_sync_appcfgs_res;
+        auto da_header = da_sync_appcfgs_res.mutable_header();
+        int da_rc = 0;
+        std::string da_ret_msg = "";
+
+        appcfgs_lock.lock();
+        for (auto cfg: appcfgs) {
+            auto appcfg = da_sync_appcfgs_res.add_cfgs();
+            appcfg->set_app_id(cfg->get_app_id());
+            appcfg->set_path(cfg->get_path());
+            appcfg->set_content(cfg->get_content());
+            appcfg->set_md5(cfg->get_md5());
+            appcfg->set_app_name(cfg->get_app_name());
+        }
+        appcfgs_lock.unlock();
+
+        da_header->set_rc(da_rc);
+        da_header->set_message(da_ret_msg);
+        // 发送请求给DA,使其获取最新的appcfg信息
+        auto das = agents->get_agents_by_type(DA_NAME);
+        for (auto da: das) {
+            da->get_agent_lock().lock();
+            send_msg(da->get_sess(), da_sync_appcfgs_res, MsgType::CT_DOCKER_SYNC_APP_CFG_RES);
+            da->get_agent_lock().unlock();
+        }
+    }
+
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, po_update_appcfg_res, MsgType::CT_PORTAL_UPDATE_APP_CFG_RES);
+}
+
+void Controller::update_appcfg(int app_id, std::string path, std::string content) {
+    MD5 md5;
+    appcfgs_lock.lock();
+    // 首先查看这个app_id是否已经在内存中了,如果存在则执行更新操作,否则执行添加操作
+    bool app_found = false;
+    for (auto cfg: appcfgs) {
+        if (cfg->get_app_id() == app_id) {
+            app_found = true;
+            cfg->set_path(path);
+            cfg->set_content(content);
+            cfg->set_md5(md5.digestString(content.c_str()));
+            break;
+        }
+    }
+    appcfgs_lock.unlock();
+    if (!app_found) {
+        // 此时重新从数据库中reload数据即可
+        init_appcfgs();
+    }
+}
+
+void Controller::handle_po_list_appcfg_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::DASyncAppsCFGRes da_sync_appcfgs_res;
+    auto header = da_sync_appcfgs_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    appcfgs_lock.lock();
+    for (auto cfg: appcfgs) {
+        auto appcfg = da_sync_appcfgs_res.add_cfgs();
+        appcfg->set_app_id(cfg->get_app_id());
+        appcfg->set_path(cfg->get_path());
+        appcfg->set_content(cfg->get_content());
+        appcfg->set_md5(cfg->get_md5());
+        appcfg->set_app_name(cfg->get_app_name());
+    }
+    appcfgs_lock.unlock();
+
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, da_sync_appcfgs_res, MsgType::CT_PORTAL_LIST_APP_CFG_RES);
+}
+
 void Controller::handle_sp_listen_info_sync_req(sess_ptr sess, msg_ptr msg) {
     ogp_msg::SDProxyListenInfoSyncReq listen_info_req;
     listen_info_req.ParseFromArray(msg->get_msg_body(), msg->get_msg_body_size());
@@ -179,6 +302,28 @@ void Controller::handle_sp_listen_info_sync_req(sess_ptr sess, msg_ptr msg) {
     } else {
         LOG_ERROR("unknown sdp send listen info sync req")
     }
+}
+
+void Controller::handle_da_sync_appcfg_msg(sess_ptr sess, msg_ptr msg) {
+    ogp_msg::DASyncAppsCFGRes da_sync_appcfgs_res;
+    auto header = da_sync_appcfgs_res.mutable_header();
+    int rc = 0;
+    std::string ret_msg = "";
+
+    appcfgs_lock.lock();
+    for (auto cfg: appcfgs) {
+        auto appcfg = da_sync_appcfgs_res.add_cfgs();
+        appcfg->set_app_id(cfg->get_app_id());
+        appcfg->set_path(cfg->get_path());
+        appcfg->set_content(cfg->get_content());
+        appcfg->set_md5(cfg->get_md5());
+        appcfg->set_app_name(cfg->get_app_name());
+    }
+    appcfgs_lock.unlock();
+
+    header->set_rc(rc);
+    header->set_message(ret_msg);
+    send_msg(sess, da_sync_appcfgs_res, MsgType::CT_DOCKER_SYNC_APP_CFG_RES);
 }
 
 void Controller::handle_sa_list_sdp_msg(sess_ptr sess, msg_ptr msg) {
