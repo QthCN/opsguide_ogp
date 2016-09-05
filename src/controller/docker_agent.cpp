@@ -472,6 +472,8 @@ void DockerAgent::handle_ct_sync_app_cfg_msg(sess_ptr sess, msg_ptr msg) {
             } else {
                 cf << content;
                 cf.close();
+                boost::filesystem::permissions(cfg_file_full_name,
+                                               boost::filesystem::add_perms|boost::filesystem::others_read|boost::filesystem::owner_read);
                 LOG_INFO("update cfg for " + cfg_file_full_name + " successful")
             }
         }

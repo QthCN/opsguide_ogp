@@ -37,6 +37,8 @@ public:
     MOCK_METHOD5(add_port_service, void(std::string service_type, int app_id, int service_port, int private_port, int *service_id));
     MOCK_METHOD1(remove_service, void(int service_id));
     MOCK_METHOD0(list_services, std::vector<service_model_ptr>());
+    MOCK_METHOD0(get_app_cfgs, std::vector<appcfg_model_ptr>());
+    MOCK_METHOD3(update_appcfg, void(int app_id, std::string path, std::string content));
 };
 
 #endif //OGP_TESTS_MODEL_TEST_H
